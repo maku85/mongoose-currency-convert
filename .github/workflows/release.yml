@@ -32,9 +32,8 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Debug NPM_TOKEN length
-        run: |
-          echo "Token length: $(echo -n \"$NPM_TOKEN\" | wc -c)"
+      - name: Test npm authentication
+        run: npm whoami
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
