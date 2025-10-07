@@ -33,7 +33,8 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Debug NPM_TOKEN length
-        run: echo "Token length: ${#NPM_TOKEN}"
+        run: |
+          echo "Token length: $(echo -n \"$NPM_TOKEN\" | wc -c)"
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
