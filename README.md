@@ -169,7 +169,7 @@ ProductSchema.plugin(currencyConversionPlugin, {
 - Example:
 
 ```ts
-import type { CurrencyPluginOptions, CurrencyPluginErrorContext } from 'mongoose-currency-convert';
+import type { CurrencyPluginOptions, CurrencyPluginErrorContext } from 'mongoose-currency-convert/types';
 ```
 
 ## Extension Plugins (e.g. BCE)
