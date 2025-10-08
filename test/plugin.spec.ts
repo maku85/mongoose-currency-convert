@@ -121,7 +121,7 @@ describe('currencyConversionPlugin', () => {
         amount: Number,
         currency: String,
         date: Date,
-      },
+      }
     });
 
     const options: CurrencyPluginOptions = {
@@ -329,7 +329,12 @@ describe('currencyConversionPlugin', () => {
   });
 
   it('should rollback on error if rollbackOnError is true', async () => {
-    const schema = new Schema({ price: Number, currency: String, result: Object });
+    const schema = new Schema({
+      price: Number,
+      currency: String,
+      result: Object,
+      result2: Object,
+    });
     schema.plugin(currencyConversionPlugin, {
       fields: [
         { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
@@ -372,7 +377,12 @@ describe('currencyConversionPlugin', () => {
   });
 
   it('should transform date with dateTransform', async () => {
-    const schema = new Schema({ price: Number, currency: String, result: Object, date: String });
+    const schema = new Schema({
+      price: Number,
+      currency: String,
+      result: Object,
+      date: String
+    });
     schema.plugin(currencyConversionPlugin, {
       fields: [{ sourcePath: 'price', currencyPath: 'currency', datePath: 'date', targetPath: 'result', toCurrency: 'EUR' }],
       getRate: async (_from, _to, date) => {
@@ -394,7 +404,11 @@ describe('currencyConversionPlugin', () => {
     const warnings: string[] = [];
     const origWarn = console.warn;
     console.warn = (msg: string) => warnings.push(msg);
-    const schema = new Schema({ price: Number, currency: String, result: Object });
+    const schema = new Schema({
+      price: Number,
+      currency: String,
+      result: Object
+    });
     schema.plugin(currencyConversionPlugin, {
       fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' }],
       getRate: async () => 1,
@@ -416,7 +430,11 @@ describe('currencyConversionPlugin', () => {
     const warnings: string[] = [];
     const origWarn = console.warn;
     console.warn = (msg: string) => warnings.push(msg);
-    const schema = new Schema({ price: Number, currency: String, result: Object });
+    const schema = new Schema({
+      price: Number,
+      currency: String,
+      result: Object,
+    });
     schema.plugin(currencyConversionPlugin, {
       fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'USD' }],
       getRate: async () => 1,

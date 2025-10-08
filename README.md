@@ -10,7 +10,7 @@ A lightweight Mongoose plugin for automatic currency conversion at save time - f
 
 - **Automatic currency conversion** for specified fields when saving documents or updating them.
 - **Customizable exchange rate logic** via a user-provided function or extension plugin.
-- **Support for nested paths and array elements** in documents (e.g. `items.0.price`).
+- **Support for nested paths** in documents.
 - **Pluggable rounding function** (default: round to 2 decimals).
 - **Simple in-memory cache** for exchange rates (optional).
 - **Error handling and rollback** on conversion failure.
@@ -42,12 +42,6 @@ const ProductSchema = new Schema({
     currency: String,
     date: Date,
   },
-  items: [
-    {
-      price: Number,
-      currency: String,
-    }
-  ]
 });
 
 ProductSchema.plugin(currencyConversionPlugin, {
@@ -59,12 +53,6 @@ ProductSchema.plugin(currencyConversionPlugin, {
       targetPath: 'priceConversion',
       toCurrency: 'EUR',
     },
-    {
-      sourcePath: 'items.0.price',
-      currencyPath: 'items.0.currency',
-      targetPath: 'items.0.converted',
-      toCurrency: 'EUR',
-    }
   ],
   getRate: async (from, to, date) => {
     // Implement your logic to fetch the exchange rate

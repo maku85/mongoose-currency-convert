@@ -40,10 +40,30 @@ export function currencyConversionPlugin(
     for (const field of fields) {
       const { sourcePath, currencyPath, datePath, targetPath, toCurrency } = field;
 
-      const amount = getNestedValue(doc, sourcePath);
-      const fromCurrency = getNestedValue(doc, currencyPath);
+      if (!targetPath) {
+        console.warn(
+          `[mongoose-currency-convert] WARNING: 'targetPath' is required in field config`,
+        );
+        continue;
+      }
 
-      if (amount == null || typeof fromCurrency !== "string" || !fromCurrency) continue;
+      if (!schema.path(`${targetPath}.amount`)) {
+        console.warn(
+          `[mongoose-currency-convert] WARNING: targetPath '${targetPath}' does not exist in schema`,
+        );
+        continue;
+      }
+
+      const amount = getNestedValue(doc, sourcePath);
+      if (amount == null) continue;
+
+      const fromCurrency = getNestedValue(doc, currencyPath);
+      if (typeof fromCurrency !== "string" || !fromCurrency) {
+        console.warn(
+          `[mongoose-currency-convert] Missing or invalid source currency at path: ${currencyPath}`,
+        );
+        continue;
+      }
 
       if (!isValidCurrencyCode(fromCurrency, allowedCurrencyCodes)) {
         console.warn(`[mongoose-currency-convert] Invalid source currency code: ${fromCurrency}`);
@@ -105,8 +125,8 @@ export function currencyConversionPlugin(
           console.error(`[mongoose-currency-convert] Error converting ${sourcePath}:`, err);
         }
         if (rollbackOnError) {
-          for (const path of convertedFields) {
-            setNestedValue(doc, path, undefined);
+          for (const f of fields) {
+            if (f.targetPath) setNestedValue(doc, f.targetPath, undefined);
           }
           break;
         }
