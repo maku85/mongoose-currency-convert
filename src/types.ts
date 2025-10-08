@@ -10,6 +10,7 @@ export interface CurrencyPluginOptions {
   fields: CurrencyFieldConfig[];
   getRate: (from: string, to: string, date?: Date) => Promise<number>;
   round?: (value: number) => number;
+  cache?: CurrencyRateCache<number>;
 }
 
 export interface CurrencyPluginErrorContext {

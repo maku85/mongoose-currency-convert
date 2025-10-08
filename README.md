@@ -108,9 +108,9 @@ You can use the built-in in-memory cache (`SimpleCache` in `src/utils/cache.ts`)
 
 ### Using the Internal SimpleCache
 ```ts
-import { SimpleCache } from 'mongoose-currency-convert';
+import { SimpleCache } from 'mongoose-currency-convert/cache';
 
-const cache = new SimpleCache();
+const cache = new SimpleCache<number>();
 
 ProductSchema.plugin(currencyConversionPlugin, {
   fields: [/* ... */],
@@ -124,7 +124,7 @@ You can implement the `CurrencyRateCache` interface to use any external service:
 
 ```ts
 import { createClient } from 'redis';
-import type { CurrencyRateCache } from 'mongoose-currency-convert';
+import type { CurrencyRateCache } from 'mongoose-currency-convert/types';
 
 class RedisCache implements CurrencyRateCache<number> {
   private client = createClient({ url: 'redis://localhost:6379' });

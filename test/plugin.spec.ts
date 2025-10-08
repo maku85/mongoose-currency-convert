@@ -7,7 +7,7 @@ import {
   disconnectTestDB,
   clearDatabase,
 } from './setup';
-import { currencyConversionPlugin } from '../src/plugin';
+import { currencyConversionPlugin } from '../src';
 
 interface ConversionResult {
   amount?: number;

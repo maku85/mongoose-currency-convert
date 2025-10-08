@@ -1,0 +1,48 @@
+const mongoose = require('mongoose');
+const { currencyConversionPlugin } = require('mongoose-currency-convert');
+const { SimpleCache } = require('mongoose-currency-convert/cache');
+
+const cache = new SimpleCache();
+
+const productSchema = new mongoose.Schema({
+  price: {
+    amount: Number,
+    currency: String,
+    date: Date
+  },
+  converted: Object
+});
+
+const options = {
+  fields: [
+    {
+      sourcePath: 'price.amount',
+      currencyPath: 'price.currency',
+      datePath: 'price.date',
+      targetPath: 'converted',
+      toCurrency: 'EUR'
+    }
+  ],
+  getRate: async (from, to, date) => {
+    if (from === 'USD' && to === 'EUR') return 0.9;
+    return 1;
+  },
+  cache,
+};
+
+productSchema.plugin(currencyConversionPlugin, options);
+
+const Product = mongoose.model('Product', productSchema);
+
+async function run() {
+  await mongoose.connect('mongodb://localhost:27017/test-currency');
+
+  const prod = new Product({
+    price: { amount: 100, currency: 'USD', date: new Date() }
+  });
+  await prod.save();
+  console.log('Prodotto salvato:', prod);
+  await mongoose.disconnect();
+}
+
+run().catch(console.error);

@@ -31,6 +31,11 @@
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     },
+    "./cache": {
+      "import": "./dist/utils/cache.js",
+      "require": "./dist/utils/cache.cjs",
+      "types": "./dist/utils/cache.d.ts"
+    },
     "./types": {
       "import": "./dist/types.d.ts",
       "types": "./dist/types.d.ts"
@@ -41,7 +46,7 @@
   ],
   "scripts": {
     "build:esm": "tsc -p tsconfig.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist --declaration false && for f in dist/*.js; do mv \"$f\" \"${f%.js}.cjs\"; done",
+    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist --declaration false && if [ -f dist/index.js ]; then cp dist/index.js dist/index.cjs; fi && if [ -f dist/utils/cache.js ]; then cp dist/utils/cache.js dist/utils/cache.cjs; fi",
     "build": "pnpm build:esm && pnpm build:cjs",
     "clean": "rm -rf dist",
     "prepare": "husky",
