@@ -41,7 +41,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist --declaration false && for f in dist/*.js; do mv \"$f\" \"${f%.js}.cjs\"; done",
+    "build": "pnpm build:esm && pnpm build:cjs",
     "clean": "rm -rf dist",
     "prepare": "husky",
     "lint": "biome check src --verbose",
