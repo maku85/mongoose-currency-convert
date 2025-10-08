@@ -31,11 +31,6 @@
       "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts"
     },
-    "./utils": {
-      "import": "./dist/utils/helpers.js",
-      "require": "./dist/utils/helpers.cjs",
-      "types": "./dist/utils/helpers.d.ts"
-    },
     "./types": {
       "import": "./dist/types.d.ts",
       "types": "./dist/types.d.ts"
