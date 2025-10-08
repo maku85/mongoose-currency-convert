@@ -1,6 +1,6 @@
 {
   "name": "mongoose-currency-convert",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A lightweight Mongoose plugin for automatic currency conversion at save time - flexible, extensible, and service-agnostic.",
   "keywords": [
     "mongoose",
