@@ -160,13 +160,13 @@ ProductSchema.plugin(currencyConversionPlugin, {
 import type { CurrencyPluginOptions, CurrencyPluginErrorContext } from 'mongoose-currency-convert/types';
 ```
 
-## Extension Plugins (e.g. BCE)
+## Extension Plugins (e.g. ECB)
 
 You can use or create extension plugins that provide a ready-to-use `getRate` function for external services (e.g. European Central Bank, exchangerate.host, etc.).
 
 | Package | Description |
 |---------|-------------|
-| `mongoose-currency-converter-bce` | BCE provider for automatic exchange rate lookup. |
+| [`mongoose-currency-converter-ecb`](https://www.npmjs.com/package/mongoose-currency-convert-ecb) | ECB provider for automatic exchange rate lookup. |
 
 ### How to Create Your Own Extension Plugin
 
