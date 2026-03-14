@@ -34,7 +34,10 @@ export function currencyConversionPlugin(
     throw new Error('[mongoose-currency-convert] option "getRate" must be a function');
   }
 
-  async function applyCurrencyConversion(doc: Record<string, unknown>) {
+  async function applyCurrencyConversion(
+    doc: Record<string, unknown>,
+  ): Promise<Map<string, unknown>> {
+    const results = new Map<string, unknown>();
     const convertedFields: string[] = [];
 
     for (const field of fields) {
@@ -111,6 +114,7 @@ export function currencyConversionPlugin(
           date: conversionDate,
         };
         setNestedValue(doc, targetPath, convertedValue);
+        results.set(targetPath, convertedValue);
         convertedFields.push(targetPath);
       } catch (err) {
         if (onError) {
@@ -127,17 +131,22 @@ export function currencyConversionPlugin(
         if (rollbackOnError) {
           for (const convertedField of convertedFields) {
             setNestedValue(doc, convertedField, undefined);
+            results.delete(convertedField);
           }
           break;
         }
       }
     }
+
+    return results;
   }
 
   schema.pre("save", async function (this: Document) {
     const doc = this.toObject({ depopulate: true });
-    await applyCurrencyConversion(doc);
-    Object.assign(this, doc);
+    const conversions = await applyCurrencyConversion(doc);
+    for (const [path, value] of conversions) {
+      this.set(path, value);
+    }
   });
 
   async function handleUpdateMiddleware(
