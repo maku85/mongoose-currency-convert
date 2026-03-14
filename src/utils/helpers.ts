@@ -132,5 +132,7 @@ export function defaultRound(value: number): number {
 
 export function isValidCurrencyCode(code: string, allowedCodes?: string[]): boolean {
   const list = allowedCodes || ISO_4217_CODES;
-  return typeof code === "string" && list.includes(code.toUpperCase());
+  if (typeof code !== "string") return false;
+  const normalized = code.toUpperCase();
+  return list.some((c) => c.toUpperCase() === normalized);
 }
