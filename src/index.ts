@@ -176,4 +176,5 @@ export function currencyConversionPlugin(
 
   schema.pre("findOneAndUpdate", handleUpdateMiddleware);
   schema.pre("updateOne", handleUpdateMiddleware);
+  schema.pre("updateMany", handleUpdateMiddleware);
 }
