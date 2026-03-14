@@ -46,7 +46,7 @@
   ],
   "scripts": {
     "build:esm": "tsc -p tsconfig.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist --declaration false && if [ -f dist/index.js ]; then cp dist/index.js dist/index.cjs; fi && if [ -f dist/utils/cache.js ]; then cp dist/utils/cache.js dist/utils/cache.cjs; fi",
+    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist/.tmp --declaration false && mv dist/.tmp/index.js dist/index.cjs && if [ -f dist/.tmp/utils/cache.js ]; then mv dist/.tmp/utils/cache.js dist/utils/cache.cjs; fi && rm -rf dist/.tmp",
     "build": "pnpm build:esm && pnpm build:cjs",
     "clean": "rm -rf dist",
     "prepare": "husky",
