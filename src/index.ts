@@ -125,8 +125,8 @@ export function currencyConversionPlugin(
           console.error(`[mongoose-currency-convert] Error converting ${sourcePath}:`, err);
         }
         if (rollbackOnError) {
-          for (const f of fields) {
-            if (f.targetPath) setNestedValue(doc, f.targetPath, undefined);
+          for (const convertedField of convertedFields) {
+            setNestedValue(doc, convertedField, undefined);
           }
           break;
         }
