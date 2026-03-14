@@ -3,7 +3,7 @@ import { currencyConversionPlugin } from 'mongoose-currency-convert';
 import { SimpleCache } from 'mongoose-currency-convert/cache';
 import type { CurrencyPluginOptions } from 'mongoose-currency-convert/types';
 
-const cache = new SimpleCache<number>();
+const cache = new SimpleCache();
 
 const productSchema = new mongoose.Schema({
   price: {
@@ -65,6 +65,7 @@ async function run() {
   });
   await prod.save();
   console.log('Product saved:', prod);
+  cache.destroy();
   await mongoose.disconnect();
 }
 

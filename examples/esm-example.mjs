@@ -64,6 +64,7 @@ async function run() {
   });
   await prod.save();
   console.log('Product saved:', prod);
+  cache.destroy();
   await mongoose.disconnect();
 }
 
