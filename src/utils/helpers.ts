@@ -85,7 +85,7 @@ export function getPathArray(path: string): string[] {
     // Refresh insertion order so least-recently-used entries are evicted first
     pathCache.delete(path);
     pathCache.set(path, cached);
-    return [...cached];
+    return cached;
   }
 
   const arr = path.split(".");
@@ -93,7 +93,7 @@ export function getPathArray(path: string): string[] {
     pathCache.delete(pathCache.keys().next().value as string);
   }
   pathCache.set(path, arr);
-  return [...arr];
+  return arr;
 }
 
 export function getNestedValue(obj: unknown, path: string | string[]): unknown {
