@@ -1,19 +1,9 @@
 import type { Schema, Document } from "mongoose";
 
-import type { CurrencyPluginErrorContext, CurrencyPluginOptions, CurrencyRateCache } from "./types";
+import type { CurrencyPluginOptions } from "./types";
 import { defaultRound, getNestedValue, isValidCurrencyCode, setNestedValue } from "./utils/helpers";
 
-export function currencyConversionPlugin(
-  schema: Schema,
-  options: CurrencyPluginOptions & {
-    allowedCurrencyCodes?: string[];
-    onError?: (ctx: CurrencyPluginErrorContext) => void;
-    fallbackRate?: number;
-    rollbackOnError?: boolean;
-    cache?: CurrencyRateCache<number>;
-    dateTransform?: (date: Date) => Date;
-  },
-) {
+export function currencyConversionPlugin(schema: Schema, options: CurrencyPluginOptions) {
   const {
     fields,
     getRate,

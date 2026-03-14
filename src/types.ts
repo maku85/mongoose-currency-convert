@@ -11,6 +11,11 @@ export interface CurrencyPluginOptions {
   getRate: (from: string, to: string, date?: Date) => Promise<number>;
   round?: (value: number) => number;
   cache?: CurrencyRateCache<number>;
+  allowedCurrencyCodes?: string[];
+  onError?: (ctx: CurrencyPluginErrorContext) => void;
+  fallbackRate?: number;
+  rollbackOnError?: boolean;
+  dateTransform?: (date: Date) => Date;
 }
 
 export interface CurrencyPluginErrorContext {
