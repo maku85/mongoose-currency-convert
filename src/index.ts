@@ -97,7 +97,7 @@ export function currencyConversionPlugin(
           }
         }
 
-        if (!rate || Number.isNaN(rate)) {
+        if (rate == null || Number.isNaN(rate)) {
           if (typeof fallbackRate === "number") {
             rate = fallbackRate;
           } else {
