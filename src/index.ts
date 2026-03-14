@@ -168,6 +168,12 @@ export function currencyConversionPlugin(
         await applyCurrencyConversion(doc);
         Object.assign(updateAny, doc);
       }
+
+      if (typeof updateAny.$setOnInsert === "object" && updateAny.$setOnInsert !== null) {
+        const insertDoc = { ...updateAny.$setOnInsert } as Record<string, unknown>;
+        await applyCurrencyConversion(insertDoc);
+        updateAny.$setOnInsert = insertDoc;
+      }
     } catch (err) {
       return next(err instanceof Error ? err : new Error(String(err)));
     }
