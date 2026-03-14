@@ -76,15 +76,22 @@ const ISO_4217_CODES = [
   "XTS",
   "XXX",
 ];
+const PATH_CACHE_MAX_SIZE = 500;
 const pathCache = new Map<string, string[]>();
 
 export function getPathArray(path: string): string[] {
-  if (pathCache.has(path)) {
-    const cached = pathCache.get(path);
-    if (cached) return [...cached];
+  const cached = pathCache.get(path);
+  if (cached) {
+    // Refresh insertion order so least-recently-used entries are evicted first
+    pathCache.delete(path);
+    pathCache.set(path, cached);
+    return [...cached];
   }
 
   const arr = path.split(".");
+  if (pathCache.size >= PATH_CACHE_MAX_SIZE) {
+    pathCache.delete(pathCache.keys().next().value as string);
+  }
   pathCache.set(path, arr);
   return [...arr];
 }
