@@ -1,12 +1,22 @@
 # Pull Request
 
+Closes #<!-- issue number -->
+
+**Type of change**
+- [ ] `fix` — bug fix
+- [ ] `feat` — new feature
+- [ ] `perf` — performance improvement
+- [ ] `refactor` — code change, not a fix or feature
+- [ ] `docs` — documentation only
+- [ ] `chore` — tooling, config, dependencies
+
 **Description**
-Explain what this PR fixes/adds.
+Explain what this PR fixes or adds, and why.
 
 **Checklist**
-- [ ] Code has been tested
-- [ ] Documentation is updated
-- [ ] No lint/test errors
-
-**Additional Notes**
-Add any useful details for the review.
+- [ ] Tests added or updated
+- [ ] All tests pass (`pnpm test`)
+- [ ] Build succeeds (`pnpm build`)
+- [ ] No lint errors (`pnpm lint`)
+- [ ] Documentation updated if needed
+- [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)

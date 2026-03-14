@@ -15,11 +15,16 @@ Clearly explain the issue you encountered.
 **Expected Behavior**
 Describe what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots.
+**Actual Behavior**
+Describe what actually happened.
 
-**Additional Information**
-- Package version:
+**Minimal Reproducible Example**
+```ts
+// paste code here
+```
+
+**Environment**
+- `mongoose-currency-convert` version:
+- `mongoose` version:
+- Node.js version:
 - Operating system:
-- Node.js/MongoDB version:
-- Other useful details:
