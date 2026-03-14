@@ -4,18 +4,21 @@
 [![Release](https://github.com/maku85/mongoose-currency-convert/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/maku85/mongoose-currency-convert/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight Mongoose plugin for automatic currency conversion at save time - flexible, extensible, and service-agnostic.
+A lightweight Mongoose plugin for automatic currency conversion at save and update time — flexible, extensible, and service-agnostic.
 
 ## Features
 
-- **Automatic currency conversion** for specified fields when saving documents or updating them.
-- **Customizable exchange rate logic** via a user-provided function or extension plugin.
-- **Support for nested paths** in documents.
-- **Pluggable rounding function** (default: round to 2 decimals).
-- **Simple in-memory cache** for exchange rates (optional).
-- **Error handling and rollback** on conversion failure.
-- **Fully tested** with high code coverage.
-- **Compatible with ESM and CommonJS**.
+- **Automatic currency conversion** on `save`, `updateOne`, `updateMany`, and `findOneAndUpdate`
+- **Parallel rate fetching** — multiple fields are converted concurrently
+- **Same-currency short-circuit** — no external call when source and target currency are equal
+- **Customizable exchange rate logic** via a user-provided `getRate` function
+- **Support for nested paths** in documents
+- **Pluggable rounding function** (default: round to 2 decimal places)
+- **Optional in-memory cache** with active TTL eviction, or bring your own (Redis, Memcached, …)
+- **Fallback rate** when `getRate` fails or returns an invalid value
+- **Error handling and rollback** on conversion failure
+- **Full ISO 4217 currency code validation** (170+ codes)
+- **ESM and CommonJS** compatible, fully typed
 
 ## Installation
 
@@ -25,7 +28,7 @@ npm install mongoose-currency-convert
 pnpm add mongoose-currency-convert
 ```
 
-## Usage
+## Quick start
 
 ```ts
 import mongoose, { Schema } from 'mongoose';
@@ -37,7 +40,7 @@ const ProductSchema = new Schema({
     currency: String,
     date: Date,
   },
-  priceConversion: {
+  priceEur: {
     amount: Number,
     currency: String,
     date: Date,
@@ -47,68 +50,98 @@ const ProductSchema = new Schema({
 ProductSchema.plugin(currencyConversionPlugin, {
   fields: [
     {
-      sourcePath: 'price.amount',
-      currencyPath: 'price.currency',
-      datePath: 'price.date',
-      targetPath: 'priceConversion',
-      toCurrency: 'EUR',
+      sourcePath: 'price.amount',    // path of the amount to convert
+      currencyPath: 'price.currency', // path of the source currency code
+      datePath: 'price.date',        // (optional) path of the reference date
+      targetPath: 'priceEur',        // where to write the converted result
+      toCurrency: 'EUR',             // target currency code
     },
   ],
   getRate: async (from, to, date) => {
-    // Implement your logic to fetch the exchange rate
-    return 0.85; // Example: USD → EUR
+    // Fetch the exchange rate from any service you prefer
+    return 0.85; // example: 1 USD = 0.85 EUR
   },
-  // Optional: custom rounding function
-  round: (value) => Math.round(value * 100) / 100,
 });
 
 const Product = mongoose.model('Product', ProductSchema);
+
+// Conversion happens automatically on save and updates
+const p = await new Product({ price: { amount: 100, currency: 'USD' } }).save();
+// p.priceEur → { amount: 85, currency: 'EUR', date: <Date> }
 ```
 
-## Supported Mongoose Operations
+## Supported operations
 
-- `save`
-- `updateOne`
-- `findOneAndUpdate`
+Currency conversion is applied automatically for:
 
-Currency conversion is automatically applied when saving or updating documents using these operations.
+| Operation | Notes |
+|-----------|-------|
+| `save` | Applies on initial insert and subsequent saves |
+| `updateOne` | Handles both `$set` and plain update objects |
+| `updateMany` | Same behaviour as `updateOne` |
+| `findOneAndUpdate` | Handles both `$set` and plain update objects |
 
-## Plugin Options
+`$setOnInsert` fields inside upsert operations are also converted.
 
-- `fields`: Array of field mapping objects:
-  - `sourcePath`: Path to the source amount (supports nested and array paths).
-  - `currencyPath`: Path to the source currency.
-  - `datePath` (optional): Path to the date for conversion.
-  - `targetPath`: Path to write the converted value.
-  - `toCurrency`: Target currency code.
-- `getRate(from: string, to: string, date: Date)`: Async function returning the exchange rate.
-- `round(value: number)`: Optional rounding function.
-- `allowedCurrencyCodes`: Optional array of allowed currency codes (ISO 4217).
-- `onError(ctx)`: Optional callback called when a conversion error occurs. Receives an object with details.
-- `fallbackRate`: Optional fallback rate if the conversion rate is invalid or missing.
-- `rollbackOnError`: Optional boolean. If true, revokes all conversions made if there's an error.
-- `cache`: Optional cache object for exchange rates (see `SimpleCache`).
-- `dateTransform(date: Date)`: Optional function to transform the conversion date.
+## Plugin options
 
-## Caching Exchange Rates
+All options are defined in the `CurrencyPluginOptions` interface and can be imported from `mongoose-currency-convert/types`.
 
-You can use the built-in in-memory cache (`SimpleCache` in `src/utils/cache.ts`) or provide your own cache implementation (e.g. backed by Redis, Memcached, etc.).
+### Required
 
-### Using the Internal SimpleCache
+| Option | Type | Description |
+|--------|------|-------------|
+| `fields` | `CurrencyFieldConfig[]` | Array of field mappings (see below) |
+| `getRate` | `(from, to, date?) => Promise<number>` | Returns the exchange rate for a currency pair |
+
+### `CurrencyFieldConfig`
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `sourcePath` | `string` | ✓ | Dot-notation path of the amount to convert |
+| `currencyPath` | `string` | ✓ | Dot-notation path of the source currency code |
+| `targetPath` | `string` | ✓ | Dot-notation path where the result is written |
+| `toCurrency` | `string` | ✓ | ISO 4217 target currency code |
+| `datePath` | `string` | | Dot-notation path of the reference date for the rate |
+
+The target path must point to a schema object with `amount`, `currency`, and `date` fields.
+
+### Optional
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `round` | `(value: number) => number` | Round to 2 decimals | Custom rounding function |
+| `cache` | `CurrencyRateCache<number>` | — | Cache for exchange rates |
+| `allowedCurrencyCodes` | `string[]` | Full ISO 4217 list | Restrict accepted currency codes |
+| `fallbackRate` | `number` | — | Rate to use when `getRate` throws or returns an invalid value |
+| `onError` | `(ctx: CurrencyPluginErrorContext) => void` | `console.error` | Called on conversion failure |
+| `rollbackOnError` | `boolean` | `false` | If `true`, clears already-converted fields when a field fails |
+| `dateTransform` | `(date: Date) => Date` | — | Transform the conversion date before passing it to `getRate` |
+
+## Caching
+
+### Built-in `SimpleCache`
+
+An in-memory LRU cache with TTL-based eviction is included. The cache key is `{from}_{to}_{YYYY-MM-DD}`.
+
 ```ts
 import { SimpleCache } from 'mongoose-currency-convert/cache';
 
-const cache = new SimpleCache<number>();
+const cache = new SimpleCache(60); // TTL in minutes, default 60
 
 ProductSchema.plugin(currencyConversionPlugin, {
-  fields: [/* ... */],
-  getRate: async (from, to, date) => { /* ... */ },
+  fields: [/* … */],
+  getRate: async (from, to, date) => { /* … */ },
   cache,
 });
+
+// When shutting down, clear the sweep timer to avoid process hang
+cache.destroy();
 ```
 
-### Using an External Cache (e.g. Redis)
-You can implement the `CurrencyRateCache` interface to use any external service:
+### Custom cache (e.g. Redis)
+
+Implement the `CurrencyRateCache` interface:
 
 ```ts
 import { createClient } from 'redis';
@@ -116,111 +149,126 @@ import type { CurrencyRateCache } from 'mongoose-currency-convert/types';
 
 class RedisCache implements CurrencyRateCache<number> {
   private client = createClient({ url: 'redis://localhost:6379' });
+
   constructor() { this.client.connect(); }
 
   async get(key: string): Promise<number | undefined> {
-    const value = await this.client.get(key);
-    return value ? Number(value) : undefined;
+    const v = await this.client.get(key);
+    return v != null ? Number(v) : undefined;
   }
+
   async set(key: string, value: number): Promise<void> {
-    await this.client.set(key, value.toString(), { EX: 86400 }); // 1 day expiry
+    await this.client.set(key, String(value), { EX: 86400 });
   }
 }
 
-const cache = new RedisCache();
-
 ProductSchema.plugin(currencyConversionPlugin, {
-  fields: [/* ... */],
-  getRate: async (from, to, date) => { /* ... */ },
-  cache,
+  fields: [/* … */],
+  getRate: async (from, to, date) => { /* … */ },
+  cache: new RedisCache(),
 });
 ```
 
-## Error Handling Example
-
-You can handle conversion errors using the `onError` callback:
+## Error handling
 
 ```ts
 ProductSchema.plugin(currencyConversionPlugin, {
-  fields: [/* ... */],
-  getRate: async () => { throw new Error('rate error'); },
+  fields: [/* … */],
+  getRate: myGetRate,
+
+  // Called when a conversion fails; receives details about the failure
   onError: (ctx) => {
-    console.error('Conversion error:', ctx);
+    console.error(`Conversion failed: ${ctx.fromCurrency} → ${ctx.toCurrency}`, ctx.error);
   },
+
+  // Use a static rate when getRate fails or returns an invalid value
+  fallbackRate: 1,
+
+  // Undo already-converted fields if any field in the document fails
   rollbackOnError: true,
 });
 ```
 
-## TypeScript Support
+The `CurrencyPluginErrorContext` object contains:
 
-- Fully typed, with exported types for plugin options and error context.
-- Example:
+| Property | Type | Description |
+|----------|------|-------------|
+| `field` | `string` | `sourcePath` of the failing field |
+| `fromCurrency` | `string` | Source currency code |
+| `toCurrency` | `string` | Target currency code |
+| `date` | `Date` | Conversion date used |
+| `error` | `unknown` | The original error |
+
+## Multiple fields
+
+Multiple fields are fetched **in parallel** and written sequentially:
 
 ```ts
-import type { CurrencyPluginOptions, CurrencyPluginErrorContext } from 'mongoose-currency-convert/types';
+ProductSchema.plugin(currencyConversionPlugin, {
+  fields: [
+    { sourcePath: 'price.amount', currencyPath: 'price.currency', targetPath: 'priceEur', toCurrency: 'EUR' },
+    { sourcePath: 'price.amount', currencyPath: 'price.currency', targetPath: 'priceGbp', toCurrency: 'GBP' },
+  ],
+  getRate: myGetRate,
+});
 ```
 
-## Extension Plugins (e.g. ECB)
+## TypeScript
 
-You can use or create extension plugins that provide a ready-to-use `getRate` function for external services (e.g. European Central Bank, exchangerate.host, etc.).
+All types are exported:
+
+```ts
+import type {
+  CurrencyPluginOptions,
+  CurrencyFieldConfig,
+  CurrencyPluginErrorContext,
+  CurrencyRateCache,
+  GetRateFn,
+} from 'mongoose-currency-convert/types';
+```
+
+## Extension plugins
+
+Ready-made `getRate` providers:
 
 | Package | Description |
 |---------|-------------|
-| [`mongoose-currency-converter-ecb`](https://www.npmjs.com/package/mongoose-currency-convert-ecb) | ECB provider for automatic exchange rate lookup. |
+| [`mongoose-currency-convert-ecb`](https://www.npmjs.com/package/mongoose-currency-convert-ecb) | European Central Bank exchange rates |
 
-### How to Create Your Own Extension Plugin
+### Creating your own provider
 
-1. Import the types from the base plugin:
-   ```ts
-   import type { GetRateFn } from 'mongoose-currency-convert';
-   ```
-2. Implement a factory function that returns a `getRate` function:
-   ```ts
-   export function createMyGetRate(): GetRateFn {
-     return async function getRate(from, to, date) {
-       // Fetch rate from your service
-       // Return the rate
-     };
-   }
-   ```
-3. Use your plugin in the base plugin configuration:
-   ```ts
-   ProductSchema.plugin(currencyConversionPlugin, {
-     fields: [/* ... */],
-     getRate: createMyGetRate(),
-     cache,
-   });
-   ```
+```ts
+import type { GetRateFn } from 'mongoose-currency-convert/types';
 
-> **Note:** The cache is managed by the base plugin. Extension plugins should not read or write to the cache directly; they only fetch rates from external services.
+export function createMyProvider(): GetRateFn {
+  return async (from, to, date) => {
+    // fetch rate from your service
+    return rate;
+  };
+}
+```
 
-## Limitations & Known Issues
+> The cache is managed by the base plugin. Providers only need to return a rate — they should not interact with the cache directly.
 
-- Only `save`, `updateOne`, and `findOneAndUpdate` are supported for automatic conversion.
-- Array paths are supported, but deep array updates (e.g. `items.$.price`) may require manual handling.
-- Only `$set` and direct field updates are converted in update operations; other MongoDB operators (`$inc`, `$push`, etc.) are not automatically converted.
-- The list of supported currency codes is static (ISO 4217).
-- If you use custom cache, ensure it implements the required interface.
+## Limitations
+
+- Only `$set` and plain update objects are converted in update operations. Other MongoDB operators (`$inc`, `$push`, etc.) are not automatically converted.
+- Deep array update paths (e.g. `items.$.price`) may require manual handling.
 
 ## Compatibility
 
-- Node.js >= 18.x
-- Mongoose >= 7.x
-- TypeScript >= 5.x (optional)
+- Node.js ≥ 18
+- Mongoose ≥ 7
+- TypeScript ≥ 5 (optional)
 
 ## Contributing
 
-Contributions are welcome! To contribute:
-- Fork the repository and create a new branch.
-- Submit a pull request with a clear description of your changes.
-- Follow the coding style and add tests for new features or bug fixes.
-- For major changes, open an issue first to discuss your idea.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details (if available).
+Contributions are welcome. Please open an issue first for major changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes and release history.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
