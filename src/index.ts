@@ -86,6 +86,8 @@ export function currencyConversionPlugin(
         continue;
       }
 
+      if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) continue;
+
       const dateValue = datePath ? getNestedValue(doc, datePath) : undefined;
       let conversionDate =
         dateValue &&
@@ -125,6 +127,9 @@ export function currencyConversionPlugin(
 
             return { success: true, rate };
           } catch (error) {
+            if (typeof fallbackRate === "number") {
+              return { success: true, rate: fallbackRate };
+            }
             return { success: false, error };
           }
         },
