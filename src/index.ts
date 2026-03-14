@@ -142,21 +142,25 @@ export function currencyConversionPlugin(
 
   async function handleUpdateMiddleware(
     this: import("mongoose").Query<unknown, unknown>,
-    next: () => void,
+    next: (err?: Error) => void,
   ) {
     const update = this.getUpdate();
     if (!update) return next();
 
     const updateAny = update as Record<string, unknown>;
     let doc: Record<string, unknown>;
-    if (typeof updateAny.$set === "object" && updateAny.$set !== null) {
-      doc = { ...updateAny.$set };
-      await applyCurrencyConversion(doc);
-      updateAny.$set = doc;
-    } else {
-      doc = { ...updateAny };
-      await applyCurrencyConversion(doc);
-      Object.assign(updateAny, doc);
+    try {
+      if (typeof updateAny.$set === "object" && updateAny.$set !== null) {
+        doc = { ...updateAny.$set };
+        await applyCurrencyConversion(doc);
+        updateAny.$set = doc;
+      } else {
+        doc = { ...updateAny };
+        await applyCurrencyConversion(doc);
+        Object.assign(updateAny, doc);
+      }
+    } catch (err) {
+      return next(err instanceof Error ? err : new Error(String(err)));
     }
     next();
   }
