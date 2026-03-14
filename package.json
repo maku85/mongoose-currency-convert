@@ -1,7 +1,7 @@
 {
   "name": "mongoose-currency-convert",
   "version": "0.1.5",
-  "description": "A lightweight Mongoose plugin for automatic currency conversion at save time - flexible, extensible, and service-agnostic.",
+  "description": "A lightweight Mongoose plugin for automatic currency conversion at save and update time — flexible, extensible, and service-agnostic.",
   "keywords": [
     "mongoose",
     "plugin",
@@ -50,10 +50,10 @@
     "lint": "biome check src --verbose",
     "format": "biome format src --write",
     "release": "semantic-release",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "pnpm build",
     "test": "mocha --config .mocharc.json",
     "test:watch": "mocha --watch --config .mocharc.json",
-    "coverage": "nyc npm test"
+    "coverage": "nyc pnpm test"
   },
   "peerDependencies": {
     "mongoose": ">=7.0.0"
