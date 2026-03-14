@@ -38,7 +38,15 @@ export function currencyConversionPlugin(
     doc: Record<string, unknown>,
   ): Promise<Map<string, unknown>> {
     const results = new Map<string, unknown>();
-    const convertedFields: string[] = [];
+
+    type WorkItem = {
+      field: (typeof fields)[number];
+      amount: unknown;
+      fromCurrency: string;
+      conversionDate: Date;
+      cacheKey: string;
+    };
+    const workItems: WorkItem[] = [];
 
     for (const field of fields) {
       const { sourcePath, currencyPath, datePath, targetPath, toCurrency } = field;
@@ -88,45 +96,61 @@ export function currencyConversionPlugin(
           : new Date();
       if (dateTransform) conversionDate = dateTransform(conversionDate);
 
-      let rate: number | undefined;
       const cacheKey = `${fromCurrency}_${toCurrency}_${conversionDate.toISOString().slice(0, 10)}`;
-      try {
-        if (cache) rate = await cache.get(cacheKey);
+      workItems.push({ field, amount, fromCurrency, conversionDate, cacheKey });
+    }
 
-        if (rate === undefined) {
-          rate = await getRate(fromCurrency as string, toCurrency, conversionDate);
-          if (cache && rate !== undefined && !Number.isNaN(rate)) {
-            await cache.set(cacheKey, rate);
+    type RateResult = { success: true; rate: number } | { success: false; error: unknown };
+    const rateResults = await Promise.all(
+      workItems.map(
+        async ({ field, fromCurrency, conversionDate, cacheKey }): Promise<RateResult> => {
+          try {
+            let rate: number | undefined;
+            if (cache) rate = await cache.get(cacheKey);
+
+            if (rate === undefined) {
+              rate = await getRate(fromCurrency, field.toCurrency, conversionDate);
+              if (cache && rate !== undefined && !Number.isNaN(rate)) {
+                await cache.set(cacheKey, rate);
+              }
+            }
+
+            if (rate == null || Number.isNaN(rate)) {
+              if (typeof fallbackRate === "number") {
+                rate = fallbackRate;
+              } else {
+                throw new Error("Invalid rate");
+              }
+            }
+
+            return { success: true, rate };
+          } catch (error) {
+            return { success: false, error };
           }
-        }
+        },
+      ),
+    );
 
-        if (rate == null || Number.isNaN(rate)) {
-          if (typeof fallbackRate === "number") {
-            rate = fallbackRate;
-          } else {
-            throw new Error("Invalid rate");
-          }
-        }
+    const convertedFields: string[] = [];
+    for (let i = 0; i < workItems.length; i++) {
+      const { field, amount, fromCurrency, conversionDate } = workItems[i];
+      const { sourcePath, targetPath, toCurrency } = field;
+      const rateResult = rateResults[i];
 
-        const convertedValue = {
-          amount: round(Number(amount) * rate),
-          currency: toCurrency,
-          date: conversionDate,
-        };
-        setNestedValue(doc, targetPath, convertedValue);
-        results.set(targetPath, convertedValue);
-        convertedFields.push(targetPath);
-      } catch (err) {
+      if (!rateResult.success) {
         if (onError) {
           onError({
             field: sourcePath,
-            fromCurrency: fromCurrency as string,
+            fromCurrency,
             toCurrency,
             date: conversionDate,
-            error: err,
+            error: rateResult.error,
           });
         } else {
-          console.error(`[mongoose-currency-convert] Error converting ${sourcePath}:`, err);
+          console.error(
+            `[mongoose-currency-convert] Error converting ${sourcePath}:`,
+            rateResult.error,
+          );
         }
         if (rollbackOnError) {
           for (const convertedField of convertedFields) {
@@ -135,7 +159,17 @@ export function currencyConversionPlugin(
           }
           break;
         }
+        continue;
       }
+
+      const convertedValue = {
+        amount: round(Number(amount) * rateResult.rate),
+        currency: toCurrency,
+        date: conversionDate,
+      };
+      setNestedValue(doc, targetPath, convertedValue);
+      results.set(targetPath, convertedValue);
+      convertedFields.push(targetPath);
     }
 
     return results;
