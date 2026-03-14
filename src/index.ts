@@ -176,8 +176,7 @@ export function currencyConversionPlugin(
   }
 
   schema.pre("save", async function (this: Document) {
-    const doc = this.toObject({ depopulate: true });
-    const conversions = await applyCurrencyConversion(doc);
+    const conversions = await applyCurrencyConversion(this as unknown as Record<string, unknown>);
     for (const [path, value] of conversions) {
       this.set(path, value);
     }
