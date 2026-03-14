@@ -23,21 +23,20 @@
   },
   "homepage": "https://github.com/maku85/mongoose-currency-convert#readme",
   "main": "dist/index.js",
-  "module": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     },
     "./cache": {
-      "import": "./dist/utils/cache.js",
-      "require": "./dist/utils/cache.cjs",
-      "types": "./dist/utils/cache.d.ts"
+      "types": "./dist/utils/cache.d.ts",
+      "import": "./dist/utils/cache.mjs",
+      "require": "./dist/utils/cache.js"
     },
     "./types": {
-      "import": "./dist/types.d.ts",
       "types": "./dist/types.d.ts"
     }
   },
@@ -45,9 +44,7 @@
     "dist"
   ],
   "scripts": {
-    "build:esm": "tsc -p tsconfig.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json --outDir dist/.tmp --declaration false && mv dist/.tmp/index.js dist/index.cjs && if [ -f dist/.tmp/utils/cache.js ]; then mv dist/.tmp/utils/cache.js dist/utils/cache.cjs; fi && rm -rf dist/.tmp",
-    "build": "pnpm build:esm && pnpm build:cjs",
+    "build": "tsup",
     "clean": "rm -rf dist",
     "prepare": "husky",
     "lint": "biome check src --verbose",
@@ -79,6 +76,7 @@
     "nyc": "^17.1.0",
     "semantic-release": "^24.2.9",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
   "engines": {
