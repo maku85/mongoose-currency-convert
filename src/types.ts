@@ -12,8 +12,8 @@ export interface CurrencyPluginOptions {
   round?: (value: number) => number;
   cache?: CurrencyRateCache<number>;
   allowedCurrencyCodes?: string[];
-  onError?: (ctx: CurrencyPluginErrorContext) => void;
-  onSuccess?: (ctx: CurrencyPluginSuccessContext) => void;
+  onError?: (ctx: CurrencyPluginErrorContext) => Promise<void> | void;
+  onSuccess?: (ctx: CurrencyPluginSuccessContext) => Promise<void> | void;
   fallbackRate?: number;
   rollbackOnError?: boolean;
   dateTransform?: (date: Date) => Date;
@@ -78,3 +78,10 @@ export interface CacheEntry<T> {
 }
 
 export type GetRateFn = (from: string, to: string, date?: Date) => Promise<number>;
+
+declare module "mongoose" {
+  interface QueryOptions {
+    /** Set to `true` to skip currency conversion for this query. */
+    skipCurrencyConversion?: boolean;
+  }
+}

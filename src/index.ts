@@ -221,7 +221,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         }
 
         if (rateValidation) {
-          const { min = 0, max } = rateValidation;
+          const { min = Number.EPSILON, max } = rateValidation;
           if (rate < min || (max !== undefined && rate > max)) {
             throw new Error(
               `Rate ${rate} is out of bounds [${min}, ${max ?? "∞"}] for ${fromCurrency}→${field.toCurrency}`,
@@ -233,7 +233,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       } catch (error) {
         if (typeof fallbackRate === "number") {
           if (rateValidation) {
-            const { min = 0, max } = rateValidation;
+            const { min = Number.EPSILON, max } = rateValidation;
             if (fallbackRate < min || (max !== undefined && fallbackRate > max)) {
               return {
                 success: false,
@@ -264,7 +264,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
       if (!rateResult.success) {
         if (onError) {
-          onError({
+          await onError({
             field: sourcePath,
             fromCurrency,
             toCurrency,
@@ -296,7 +296,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       results.set(targetPath, convertedValue);
       convertedFields.push(targetPath);
       if (onSuccess) {
-        onSuccess({
+        await onSuccess({
           field: sourcePath,
           fromCurrency,
           toCurrency,

@@ -287,7 +287,7 @@ describe('currencyConversionPlugin', () => {
 
     it('should call onSuccess after a successful conversion', async () => {
       const calls: CurrencyPluginSuccessContext[] = [];
-      const Doc = addPlugin(buildSchema(), { onSuccess: (ctx) => calls.push(ctx) });
+      const Doc = addPlugin(buildSchema(), { onSuccess: (ctx) => { calls.push(ctx); } });
       await new Doc({ price: 10, currency: 'USD' }).save();
 
       expect(calls).to.have.length(1);
@@ -306,7 +306,7 @@ describe('currencyConversionPlugin', () => {
       const Doc = addPlugin(buildSchema(), {
         getRate: async () => { throw new Error('down'); },
         fallbackRate: 3,
-        onSuccess: (ctx) => calls.push(ctx),
+        onSuccess: (ctx) => { calls.push(ctx); },
       });
       await new Doc({ price: 10, currency: 'USD' }).save();
 
@@ -501,7 +501,7 @@ describe('currencyConversionPlugin', () => {
       await Doc.updateOne(
         { _id: created._id },
         { $set: { price: 100, currency: 'USD' } },
-        { skipCurrencyConversion: true } as Record<string, unknown>,
+        { skipCurrencyConversion: true } as never,
       );
       const updated = await Doc.findById(created._id).lean() as AnyDoc;
 
