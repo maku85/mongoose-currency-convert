@@ -97,6 +97,28 @@ describe('currencyConversionPlugin', () => {
         }),
       ).to.throw('"getRate" must be a function');
     });
+
+    it('should throw if rateValidation.min > rateValidation.max', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          rateValidation: { min: 100, max: 1 },
+        }),
+      ).to.throw('"rateValidation.min" must be <= "rateValidation.max"');
+    });
+
+    it('should throw if rateValidation.min is not a number', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          rateValidation: { min: 'low' as never },
+        }),
+      ).to.throw('"rateValidation.min" must be a number');
+    });
   });
 
   // ── pre-save ─────────────────────────────────────────────────────────────
@@ -525,6 +547,21 @@ describe('currencyConversionPlugin', () => {
 
       expect((updated as AnyDoc)?.result.amount).to.equal(30);
     });
+
+    it('should skip conversion on findOneAndUpdate when skipCurrencyConversion is true', async () => {
+      const Doc = addPlugin(buildSchema());
+      const created = await new Doc({ price: 5, currency: 'USD' }).save();
+      // first save: result.amount = 10
+
+      await Doc.findOneAndUpdate(
+        { _id: created._id },
+        { $set: { price: 100, currency: 'USD' } },
+        { skipCurrencyConversion: true } as never,
+      );
+      const updated = await Doc.findById(created._id).lean() as AnyDoc;
+
+      expect(updated?.result.amount).to.equal(10); // unchanged
+    });
   });
 
   // ── updateMany ───────────────────────────────────────────────────────────
@@ -541,6 +578,21 @@ describe('currencyConversionPlugin', () => {
       for (const doc of docs) {
         expect(doc.result.amount).to.equal(20);
       }
+    });
+
+    it('should skip conversion on updateMany when skipCurrencyConversion is true', async () => {
+      const Doc = addPlugin(buildSchema());
+      const created = await new Doc({ price: 5, currency: 'USD' }).save();
+      // first save: result.amount = 10
+
+      await Doc.updateMany(
+        { _id: created._id },
+        { $set: { price: 100, currency: 'USD' } },
+        { skipCurrencyConversion: true } as never,
+      );
+      const updated = await Doc.findById(created._id).lean() as AnyDoc;
+
+      expect(updated?.result.amount).to.equal(10); // unchanged
     });
   });
 
@@ -653,6 +705,32 @@ describe('currencyConversionPlugin', () => {
       expect(savedA?.result.currency).to.equal('EUR');
       expect(savedB?.result.amount).to.equal(50);
       expect(savedB?.result.currency).to.equal('GBP');
+    });
+
+    it('should process fields sequentially with concurrency: 1', async () => {
+      const callOrder: number[] = [];
+      const schema = new Schema({
+        price: Number,
+        price2: Number,
+        currency: String,
+        result: { ...RESULT_FIELD },
+        result2: { ...RESULT_FIELD },
+      });
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+          { sourcePath: 'price2', currencyPath: 'currency', targetPath: 'result2', toCurrency: 'GBP' },
+        ],
+        getRate: async (_f, to) => {
+          callOrder.push(to === 'EUR' ? 1 : 2);
+          return 2;
+        },
+        concurrency: 1,
+      });
+      const Doc = model(uniqueName(), schema);
+      await new Doc({ price: 10, price2: 20, currency: 'USD' }).save();
+
+      expect(callOrder).to.deep.equal([1, 2]); // called one at a time, in order
     });
 
     it('should handle multiple fields in parallel', async () => {
