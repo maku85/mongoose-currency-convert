@@ -101,7 +101,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
       if (dateTransform) conversionDate = dateTransform(conversionDate);
 
-      const cacheKey = `${fromCurrency}_${toCurrency}_${conversionDate.toISOString().slice(0, 10)}`;
+      const cacheKey = `${fromCurrency.toUpperCase()}_${toCurrency.toUpperCase()}_${conversionDate.toISOString().slice(0, 10)}`;
       workItems.push({ field, amount, fromCurrency, conversionDate, cacheKey });
     }
 
