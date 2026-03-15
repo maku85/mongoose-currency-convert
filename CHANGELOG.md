@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.3](https://github.com/maku85/mongoose-currency-convert/compare/v0.2.2...v0.2.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* disable husky in release workflow ([c3cb272](https://github.com/maku85/mongoose-currency-convert/commit/c3cb27272ba2b53993290fcee899f477eb0b015e))
+* update lock file ([6ba2736](https://github.com/maku85/mongoose-currency-convert/commit/6ba2736206bb2a9758adc42c3447b9033b99fa03))
+* update release workflow ([184eb0f](https://github.com/maku85/mongoose-currency-convert/commit/184eb0f2d9522ddb75dd85cb570961bd7aca3794))
+* update release workflow ([dd4a9d9](https://github.com/maku85/mongoose-currency-convert/commit/dd4a9d99b39817f08a94d43e7d3eae509fbb0a41))
+
 ## [0.2.2](https://github.com/maku85/mongoose-currency-convert/compare/v0.2.1...v0.2.2) (2026-03-15)
 
 
