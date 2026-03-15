@@ -1,6 +1,6 @@
 {
   "name": "mongoose-currency-convert",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A lightweight Mongoose plugin for automatic currency conversion at save and update time — flexible, extensible, and service-agnostic.",
   "keywords": [
     "mongoose",
@@ -88,14 +88,38 @@
   },
   "commit-and-tag-version": {
     "types": [
-      { "type": "feat", "section": "Features" },
-      { "type": "fix", "section": "Bug Fixes" },
-      { "type": "perf", "section": "Performance" },
-      { "type": "revert", "section": "Reverts" },
-      { "type": "docs", "hidden": true },
-      { "type": "chore", "hidden": true },
-      { "type": "refactor", "hidden": true },
-      { "type": "test", "hidden": true }
+      {
+        "type": "feat",
+        "section": "Features"
+      },
+      {
+        "type": "fix",
+        "section": "Bug Fixes"
+      },
+      {
+        "type": "perf",
+        "section": "Performance"
+      },
+      {
+        "type": "revert",
+        "section": "Reverts"
+      },
+      {
+        "type": "docs",
+        "hidden": true
+      },
+      {
+        "type": "chore",
+        "hidden": true
+      },
+      {
+        "type": "refactor",
+        "hidden": true
+      },
+      {
+        "type": "test",
+        "hidden": true
+      }
     ],
     "scripts": {
       "prerelease": "pnpm test",
