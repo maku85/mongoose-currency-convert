@@ -27,6 +27,30 @@ export interface CurrencyPluginErrorContext {
   error: unknown;
 }
 
+/**
+ * Interface for a cache backend used to store exchange rates.
+ *
+ * Both synchronous and asynchronous implementations are accepted — the plugin
+ * always uses `await` internally, so a sync method returning `T` directly works
+ * exactly like one returning `Promise<T>`.
+ *
+ * @example Sync implementation (e.g. in-memory Map):
+ * ```ts
+ * class MyCache implements CurrencyRateCache<number> {
+ *   private store = new Map<string, number>();
+ *   get(key: string) { return this.store.get(key); }
+ *   set(key: string, value: number) { this.store.set(key, value); }
+ * }
+ * ```
+ *
+ * @example Async implementation (e.g. Redis):
+ * ```ts
+ * class RedisCache implements CurrencyRateCache<number> {
+ *   async get(key: string) { const v = await redis.get(key); return v ? Number(v) : undefined; }
+ *   async set(key: string, value: number) { await redis.set(key, String(value)); }
+ * }
+ * ```
+ */
 export interface CurrencyRateCache<T = unknown> {
   get(key: string): Promise<T | undefined> | T | undefined;
   set(key: string, value: T): Promise<void> | void;
