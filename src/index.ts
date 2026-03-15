@@ -3,6 +3,28 @@ import type { Schema, Document } from "mongoose";
 import type { CurrencyPluginOptions } from "./types";
 import { defaultRound, getNestedValue, isValidCurrencyCode, setNestedValue } from "./utils/helpers";
 
+/**
+ * Mongoose plugin that automatically converts currency fields on save and update operations.
+ *
+ * ## Error handling policy
+ *
+ * The plugin uses a three-tier strategy depending on when and where an error occurs:
+ *
+ * 1. **Initialization errors** (`throw`): Missing or invalid required options (`fields`, `getRate`)
+ *    cause an immediate `Error` to be thrown when the plugin is registered. These are
+ *    programmer errors and must be fixed before the application starts.
+ *
+ * 2. **Field validation warnings** (`console.warn` + skip): Invalid field configurations
+ *    detected at conversion time (missing `targetPath`, invalid currency code, non-numeric
+ *    `amount`, invalid date) are logged as warnings and the field is silently skipped.
+ *    The document is still saved with the remaining conversions applied.
+ *
+ * 3. **Rate fetch errors** (`onError` callback or `console.error`): Errors thrown by `getRate`
+ *    or invalid rates returned by it are passed to the `onError` callback if provided,
+ *    otherwise logged via `console.error`. If `fallbackRate` is set it is used instead.
+ *    If `rollbackOnError` is `true`, all previously converted fields in that document are
+ *    reverted before the save continues.
+ */
 export function currencyConversionPlugin(schema: Schema, options: CurrencyPluginOptions) {
   const {
     fields,
