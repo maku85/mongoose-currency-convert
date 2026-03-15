@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Schema, model } from 'mongoose';
 
-import type { CurrencyPluginErrorContext, CurrencyPluginOptions, CurrencyRateCache } from '../src/types';
+import type { CurrencyPluginErrorContext, CurrencyPluginOptions, CurrencyPluginSuccessContext, CurrencyRateCache } from '../src/types';
 import { connectTestDB, disconnectTestDB, clearDatabase } from './setup';
 import { currencyConversionPlugin } from '../src';
 
@@ -234,6 +234,21 @@ describe('currencyConversionPlugin', () => {
       await new Doc({ price: 10, currency: 'USD' }).save();
 
       expect(capturedDate?.toISOString()).to.equal(fixedDate.toISOString());
+    });
+
+    it('should call onSuccess after a successful conversion', async () => {
+      const calls: CurrencyPluginSuccessContext[] = [];
+      const Doc = addPlugin(buildSchema(), { onSuccess: (ctx) => calls.push(ctx) });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(calls).to.have.length(1);
+      expect(calls[0]?.field).to.equal('price');
+      expect(calls[0]?.fromCurrency).to.equal('USD');
+      expect(calls[0]?.toCurrency).to.equal('EUR');
+      expect(calls[0]?.originalAmount).to.equal(10);
+      expect(calls[0]?.convertedAmount).to.equal(20);
+      expect(calls[0]?.rate).to.equal(2);
+      expect(calls[0]?.date).to.be.instanceOf(Date);
     });
 
     it('should not fail save when cache.set() throws', async () => {

@@ -32,6 +32,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     round = defaultRound,
     allowedCurrencyCodes,
     onError,
+    onSuccess,
     fallbackRate,
     rollbackOnError,
     cache,
@@ -53,6 +54,10 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
   if (options.onError !== undefined && typeof options.onError !== "function") {
     throw new Error('[mongoose-currency-convert] option "onError" must be a function');
+  }
+
+  if (options.onSuccess !== undefined && typeof options.onSuccess !== "function") {
+    throw new Error('[mongoose-currency-convert] option "onSuccess" must be a function');
   }
 
   if (
@@ -78,7 +83,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
     type WorkItem = {
       field: (typeof fields)[number];
-      amount: unknown;
+      amount: number;
       fromCurrency: string;
       conversionDate: Date;
       cacheKey: string;
@@ -238,6 +243,17 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       setNestedValue(doc, targetPath, convertedValue);
       results.set(targetPath, convertedValue);
       convertedFields.push(targetPath);
+      if (onSuccess) {
+        onSuccess({
+          field: sourcePath,
+          fromCurrency,
+          toCurrency,
+          originalAmount: amount,
+          convertedAmount: convertedValue.amount,
+          rate: rateResult.rate,
+          date: conversionDate,
+        });
+      }
     }
 
     return results;

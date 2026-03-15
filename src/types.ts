@@ -13,10 +13,21 @@ export interface CurrencyPluginOptions {
   cache?: CurrencyRateCache<number>;
   allowedCurrencyCodes?: string[];
   onError?: (ctx: CurrencyPluginErrorContext) => void;
+  onSuccess?: (ctx: CurrencyPluginSuccessContext) => void;
   fallbackRate?: number;
   rollbackOnError?: boolean;
   dateTransform?: (date: Date) => Date;
   concurrency?: number;
+}
+
+export interface CurrencyPluginSuccessContext {
+  field: string;
+  fromCurrency: string;
+  toCurrency: string;
+  originalAmount: number;
+  convertedAmount: number;
+  rate: number;
+  date: Date;
 }
 
 export interface CurrencyPluginErrorContext {
