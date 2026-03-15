@@ -354,9 +354,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Releasing
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [semantic-release](https://github.com/semantic-release/semantic-release) for automated versioning and publishing.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [`commit-and-tag-version`](https://github.com/absolute-version/commit-and-tag-version) for versioning.
 
-Releases are triggered automatically when commits are pushed to `main`. The version bump is determined by commit types:
+```bash
+# preview what would change without modifying anything
+pnpm release:dry
+
+# release (auto-detects patch/minor/major from commits)
+pnpm release
+
+# or force a specific bump
+pnpm release:minor
+pnpm release:major
+
+# push commit + tag → triggers the GitHub Action
+git push --follow-tags
+```
+
+The version bump is determined by commit types:
 
 | Commit type | Release |
 |-------------|---------|
@@ -364,10 +379,7 @@ Releases are triggered automatically when commits are pushed to `main`. The vers
 | `feat:` | minor |
 | `feat!:` / `BREAKING CHANGE` | major |
 
-```bash
-# preview what would be released without publishing
-pnpm release:dry
-```
+The GitHub Action will automatically create a GitHub Release and publish to npm.
 
 ## Changelog
 
