@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.4](https://github.com/maku85/mongoose-currency-convert/compare/v0.2.3...v0.2.4) (2026-03-15)
+
+
+### Bug Fixes
+
+* update release workflow permissions and documentation ([81e3287](https://github.com/maku85/mongoose-currency-convert/commit/81e3287fde942cf8c8b13585933735ac8bfca03a))
+
 ## [0.2.3](https://github.com/maku85/mongoose-currency-convert/compare/v0.2.2...v0.2.3) (2026-03-15)
 
 
