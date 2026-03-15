@@ -2,14 +2,11 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
 
 jobs:
   release:
@@ -17,8 +14,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -36,9 +31,17 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Release
-        run: npx semantic-release
+      - name: Extract release notes
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          awk "/^## \[$VERSION\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md > RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2.5.3
+        with:
+          body_path: RELEASE_NOTES.md
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          HUSKY: 0
