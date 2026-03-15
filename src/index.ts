@@ -47,6 +47,30 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     throw new Error('[mongoose-currency-convert] option "getRate" must be a function');
   }
 
+  if (options.round !== undefined && typeof options.round !== "function") {
+    throw new Error('[mongoose-currency-convert] option "round" must be a function');
+  }
+
+  if (options.onError !== undefined && typeof options.onError !== "function") {
+    throw new Error('[mongoose-currency-convert] option "onError" must be a function');
+  }
+
+  if (
+    options.fallbackRate !== undefined &&
+    (typeof options.fallbackRate !== "number" || options.fallbackRate < 0)
+  ) {
+    throw new Error(
+      '[mongoose-currency-convert] option "fallbackRate" must be a non-negative number',
+    );
+  }
+
+  if (
+    options.concurrency !== undefined &&
+    (typeof options.concurrency !== "number" || options.concurrency < 1)
+  ) {
+    throw new Error('[mongoose-currency-convert] option "concurrency" must be a number >= 1');
+  }
+
   async function applyCurrencyConversion(
     doc: Record<string, unknown>,
   ): Promise<Map<string, unknown>> {
