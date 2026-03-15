@@ -236,6 +236,18 @@ describe('currencyConversionPlugin', () => {
       expect(capturedDate?.toISOString()).to.equal(fixedDate.toISOString());
     });
 
+    it('should not fail save when cache.set() throws', async () => {
+      const brokenCache: CurrencyRateCache<number> = {
+        get: async () => undefined,
+        set: async () => { throw new Error('cache unavailable'); },
+      };
+      const Doc = addPlugin(buildSchema(), { cache: brokenCache });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(20);
+    });
+
     it('should use fallbackRate when getRate throws', async () => {
       const Doc = addPlugin(buildSchema(), {
         getRate: async () => { throw new Error('service down'); },

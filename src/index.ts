@@ -116,7 +116,11 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
             if (rate === undefined) {
               rate = await getRate(fromCurrency, field.toCurrency, conversionDate);
               if (cache && rate !== undefined && !Number.isNaN(rate)) {
-                await cache.set(cacheKey, rate);
+                try {
+                  await cache.set(cacheKey, rate);
+                } catch (cacheErr) {
+                  console.warn("[mongoose-currency-convert] cache.set() failed:", cacheErr);
+                }
               }
             }
 
