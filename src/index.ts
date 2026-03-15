@@ -133,7 +133,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       if (amount == null) continue;
       if (typeof amount !== "number" || Number.isNaN(amount)) {
         console.warn(
-          `[mongoose-currency-convert] WARNING: non-numeric amount at path '${sourcePath}': ${JSON.stringify(amount)}`,
+          `[mongoose-currency-convert] WARNING: non-numeric amount at path '${sourcePath}': (${typeof amount})`,
         );
         continue;
       }
