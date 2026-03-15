@@ -247,6 +247,7 @@ The `CurrencyPluginSuccessContext` object contains:
 | `convertedAmount` | `number` | Amount after conversion |
 | `rate` | `number` | Exchange rate used |
 | `date` | `Date` | Conversion date used |
+| `usedFallback` | `boolean` | `true` when `fallbackRate` was used instead of the rate from `getRate` |
 
 ## Rate bounds validation
 

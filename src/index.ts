@@ -280,13 +280,17 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
       if (!rateResult.success) {
         if (onError) {
-          await onError({
-            field: sourcePath,
-            fromCurrency,
-            toCurrency,
-            date: conversionDate,
-            error: rateResult.error,
-          });
+          try {
+            await onError({
+              field: sourcePath,
+              fromCurrency,
+              toCurrency,
+              date: conversionDate,
+              error: rateResult.error,
+            });
+          } catch (callbackErr) {
+            console.error("[mongoose-currency-convert] onError callback threw:", callbackErr);
+          }
         } else {
           console.error(
             `[mongoose-currency-convert] Error converting ${sourcePath}:`,
@@ -312,16 +316,20 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       results.set(targetPath, convertedValue);
       convertedFields.push(targetPath);
       if (onSuccess) {
-        await onSuccess({
-          field: sourcePath,
-          fromCurrency,
-          toCurrency,
-          originalAmount: amount,
-          convertedAmount: convertedValue.amount,
-          rate: rateResult.rate,
-          date: conversionDate,
-          usedFallback: rateResult.usedFallback,
-        });
+        try {
+          await onSuccess({
+            field: sourcePath,
+            fromCurrency,
+            toCurrency,
+            originalAmount: amount,
+            convertedAmount: convertedValue.amount,
+            rate: rateResult.rate,
+            date: conversionDate,
+            usedFallback: rateResult.usedFallback,
+          });
+        } catch (callbackErr) {
+          console.error("[mongoose-currency-convert] onSuccess callback threw:", callbackErr);
+        }
       }
     }
 
