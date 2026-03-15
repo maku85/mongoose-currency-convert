@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'utils/cache': 'src/utils/cache.ts',
+    validate: 'src/validate.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,
