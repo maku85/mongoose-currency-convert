@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.1](https://github.com/maku85/mongoose-currency-convert/compare/v0.2.0...v0.2.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* remove unnecessary registry-url from setup-node step ([d09bced](https://github.com/maku85/mongoose-currency-convert/commit/d09bced6d0bd9fe606c8862d0029fa6c4201ba78))
+* update action-gh-release to version 2.5.3 ([dd45a0d](https://github.com/maku85/mongoose-currency-convert/commit/dd45a0df595207ff9d8626695d9b0bbc1f92075d))
+
 ## [0.2.0](https://github.com/maku85/mongoose-currency-convert/compare/v0.1.6...v0.2.0) (2026-03-15)
 
 ## [0.1.6](https://github.com/maku85/mongoose-currency-convert/compare/v0.1.5...v0.1.6) (2026-03-15)
