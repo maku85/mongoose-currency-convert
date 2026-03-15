@@ -352,6 +352,27 @@ export function createMyProvider(): GetRateFn {
 Contributions are welcome. Please open an issue first for major changes.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+## Releasing
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [`commit-and-tag-version`](https://github.com/absolute-version/commit-and-tag-version) for versioning.
+
+```bash
+# preview what would change without modifying anything
+pnpm release:dry
+
+# release (auto-detects patch/minor/major from commits)
+pnpm release
+
+# or force a specific bump
+pnpm release:minor
+pnpm release:major
+
+# push commit + tag → triggers the GitHub Action
+git push --follow-tags
+```
+
+The GitHub Action will automatically create a GitHub Release and publish to npm.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).

@@ -54,8 +54,11 @@
     "prepare": "husky",
     "lint": "biome check src --verbose",
     "format": "biome format src --write",
-    "release": "semantic-release",
     "prepublishOnly": "pnpm build",
+    "release": "commit-and-tag-version",
+    "release:minor": "commit-and-tag-version --release-as minor",
+    "release:major": "commit-and-tag-version --release-as major",
+    "release:dry": "commit-and-tag-version --dry-run",
     "test": "mocha --config .mocharc.json",
     "test:watch": "mocha --watch --config .mocharc.json",
     "coverage": "nyc pnpm test"
@@ -66,26 +69,38 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",
     "@commitlint/config-conventional": "^20.0.0",
-    "@semantic-release/changelog": "^6.0.3",
-    "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^11.0.6",
-    "@semantic-release/npm": "^12.0.2",
     "@types/chai": "^5.2.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^24.7.0",
     "chai": "^6.2.0",
+    "commit-and-tag-version": "^12.6.1",
     "commitlint": "^20.1.0",
     "husky": "^9.1.7",
     "mocha": "^11.7.4",
     "mongoose": "^8.19.0",
     "nyc": "^17.1.0",
-    "semantic-release": "^24.2.9",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "commit-and-tag-version": {
+    "types": [
+      { "type": "feat", "section": "Features" },
+      { "type": "fix", "section": "Bug Fixes" },
+      { "type": "perf", "section": "Performance" },
+      { "type": "revert", "section": "Reverts" },
+      { "type": "docs", "hidden": true },
+      { "type": "chore", "hidden": true },
+      { "type": "refactor", "hidden": true },
+      { "type": "test", "hidden": true }
+    ],
+    "scripts": {
+      "prerelease": "pnpm test",
+      "postbump": "echo 'Version bumped to' $(node -p \"require('./package.json').version\")"
+    }
   },
   "nyc": {
     "extension": [
