@@ -189,7 +189,13 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     }: WorkItem): Promise<RateResult> {
       try {
         let rate: number | undefined;
-        if (cache) rate = await cache.get(cacheKey);
+        if (cache) {
+          try {
+            rate = await cache.get(cacheKey);
+          } catch (cacheErr) {
+            console.warn("[mongoose-currency-convert] cache.get() failed:", cacheErr);
+          }
+        }
 
         if (rate === undefined) {
           rate = await getRate(fromCurrency, field.toCurrency, conversionDate);

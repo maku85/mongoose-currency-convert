@@ -300,6 +300,19 @@ describe('currencyConversionPlugin', () => {
       expect(calls[0]?.date).to.be.instanceOf(Date);
     });
 
+    it('should not fail save when cache.get() throws', async () => {
+      const brokenCache: CurrencyRateCache<number> = {
+        get: async () => { throw new Error('cache read unavailable'); },
+        set: async () => undefined,
+      };
+      const Doc = addPlugin(buildSchema(), { cache: brokenCache });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      // cache miss fallback → getRate called → conversion succeeds
+      expect(saved?.result.amount).to.equal(20);
+    });
+
     it('should not fail save when cache.set() throws', async () => {
       const brokenCache: CurrencyRateCache<number> = {
         get: async () => undefined,
