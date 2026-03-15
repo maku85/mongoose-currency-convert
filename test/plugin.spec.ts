@@ -4,6 +4,7 @@ import { Schema, model } from 'mongoose';
 import type { CurrencyPluginErrorContext, CurrencyPluginOptions, CurrencyPluginSuccessContext, CurrencyRateCache } from '../src/types';
 import { connectTestDB, disconnectTestDB, clearDatabase } from './setup';
 import { currencyConversionPlugin } from '../src';
+import { SimpleCache } from '../src/utils/cache';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDoc = Record<string, any>;
@@ -118,6 +119,46 @@ describe('currencyConversionPlugin', () => {
           rateValidation: { min: 'low' as never },
         }),
       ).to.throw('"rateValidation.min" must be a number');
+    });
+
+    it('should throw if dateTransform is not a function', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          dateTransform: 'not-a-function' as never,
+        }),
+      ).to.throw('"dateTransform" must be a function');
+    });
+
+    it('should throw if toCurrency in a field config is invalid', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'FAKE' }],
+          getRate: async () => 1,
+        }),
+      ).to.throw('invalid toCurrency "FAKE"');
+    });
+  });
+
+  // ── SimpleCache ───────────────────────────────────────────────────────────
+
+  describe('SimpleCache', () => {
+    it('should throw when ttlMinutes is 0', () => {
+      expect(() => new SimpleCache(0)).to.throw('ttlMinutes must be > 0');
+    });
+
+    it('should throw when ttlMinutes is negative', () => {
+      expect(() => new SimpleCache(-1)).to.throw('ttlMinutes must be > 0');
+    });
+
+    it('should work normally with a positive ttlMinutes', () => {
+      const cache = new SimpleCache(1);
+      cache.set('key', 42);
+      expect(cache.get('key')).to.equal(42);
+      cache.destroy();
     });
   });
 
@@ -490,6 +531,63 @@ describe('currencyConversionPlugin', () => {
       try { await new Doc({ price: 10, currency: 'USD' }).save(); } catch { threw = true; }
       expect(threw).to.be.false;
     });
+
+    it('should use original date and complete conversion when dateTransform throws', async () => {
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+
+      let capturedDate: Date | undefined;
+      const before = new Date();
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async (_f: string, _t: string, date?: Date) => { capturedDate = date; return 2; },
+        dateTransform: () => { throw new Error('transform error'); },
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const after = new Date();
+      console.warn = origWarn;
+
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+      // conversion still completes using original date
+      expect(saved?.result.amount).to.equal(20);
+      // captured date is the original (non-transformed) date
+      expect(capturedDate?.getTime()).to.be.within(before.getTime() - 1000, after.getTime() + 1000);
+      // warning was logged
+      expect(warnings.some((w) => w.includes('dateTransform threw'))).to.be.true;
+    });
+
+    it('should not break save when onSuccess callback throws', async () => {
+      const errors: unknown[] = [];
+      const origError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args[0]);
+
+      const Doc = addPlugin(buildSchema(), {
+        onSuccess: () => { throw new Error('onSuccess boom'); },
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      console.error = origError;
+
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+      expect(saved?.result.amount).to.equal(20);
+      expect(errors.some((e) => String(e).includes('onSuccess callback threw'))).to.be.true;
+    });
+
+    it('should not break save when onError callback throws', async () => {
+      const errors: unknown[] = [];
+      const origError = console.error;
+      console.error = (...args: unknown[]) => errors.push(args[0]);
+
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => { throw new Error('rate fail'); },
+        onError: () => { throw new Error('onError boom'); },
+      });
+      let threw = false;
+      try { await new Doc({ price: 10, currency: 'USD' }).save(); } catch { threw = true; }
+      console.error = origError;
+
+      expect(threw).to.be.false;
+      expect(errors.some((e) => String(e).includes('onError callback threw'))).to.be.true;
+    });
   });
 
   // ── updateOne ────────────────────────────────────────────────────────────
@@ -513,6 +611,38 @@ describe('currencyConversionPlugin', () => {
       const updated = await Doc.findById(created._id).lean() as AnyDoc;
 
       expect(updated?.result.amount).to.equal(40);
+    });
+
+    it('should rollback already-converted fields on updateOne when rollbackOnError is true', async () => {
+      const schema = new Schema({
+        price: Number,
+        currency: String,
+        result: { ...RESULT_FIELD },
+        result2: { ...RESULT_FIELD },
+      });
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result2', toCurrency: 'GBP' },
+        ],
+        getRate: async (_f: string, to: string) => {
+          if (to === 'GBP') throw new Error('fail GBP');
+          return 2;
+        },
+        rollbackOnError: true,
+      });
+      const Doc = model(uniqueName(), schema);
+      const created = await new Doc({ price: 5, currency: 'USD' }).save();
+
+      await Doc.updateOne(
+        { _id: created._id },
+        { $set: { price: 10, currency: 'USD' } },
+      );
+      const updated = await Doc.findById(created._id).lean() as AnyDoc;
+
+      // rollback: result should not have been set
+      expect(updated?.result).to.be.undefined;
+      expect(updated?.result2).to.be.undefined;
     });
 
     it('should skip conversion on updateOne when skipCurrencyConversion option is true', async () => {
@@ -548,6 +678,37 @@ describe('currencyConversionPlugin', () => {
       expect((updated as AnyDoc)?.result.amount).to.equal(30);
     });
 
+    it('should rollback already-converted fields on findOneAndUpdate when rollbackOnError is true', async () => {
+      const schema = new Schema({
+        price: Number,
+        currency: String,
+        result: { ...RESULT_FIELD },
+        result2: { ...RESULT_FIELD },
+      });
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result2', toCurrency: 'GBP' },
+        ],
+        getRate: async (_f: string, to: string) => {
+          if (to === 'GBP') throw new Error('fail GBP');
+          return 2;
+        },
+        rollbackOnError: true,
+      });
+      const Doc = model(uniqueName(), schema);
+      const created = await new Doc({ price: 5, currency: 'USD' }).save();
+
+      await Doc.findOneAndUpdate(
+        { _id: created._id },
+        { $set: { price: 10, currency: 'USD' } },
+      );
+      const updated = await Doc.findById(created._id).lean() as AnyDoc;
+
+      expect(updated?.result).to.be.undefined;
+      expect(updated?.result2).to.be.undefined;
+    });
+
     it('should skip conversion on findOneAndUpdate when skipCurrencyConversion is true', async () => {
       const Doc = addPlugin(buildSchema());
       const created = await new Doc({ price: 5, currency: 'USD' }).save();
@@ -577,6 +738,36 @@ describe('currencyConversionPlugin', () => {
 
       for (const doc of docs) {
         expect(doc.result.amount).to.equal(20);
+      }
+    });
+
+    it('should rollback already-converted fields on updateMany when rollbackOnError is true', async () => {
+      const schema = new Schema({
+        price: Number,
+        currency: String,
+        result: { ...RESULT_FIELD },
+        result2: { ...RESULT_FIELD },
+      });
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result2', toCurrency: 'GBP' },
+        ],
+        getRate: async (_f: string, to: string) => {
+          if (to === 'GBP') throw new Error('fail GBP');
+          return 2;
+        },
+        rollbackOnError: true,
+      });
+      const Doc = model(uniqueName(), schema);
+      await new Doc({ price: 5, currency: 'USD' }).save();
+
+      await Doc.updateMany({}, { $set: { price: 10, currency: 'USD' } });
+      const docs = await Doc.find({}).lean() as AnyDoc[];
+
+      for (const doc of docs) {
+        expect(doc.result).to.be.undefined;
+        expect(doc.result2).to.be.undefined;
       }
     });
 
