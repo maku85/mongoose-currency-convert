@@ -298,6 +298,21 @@ describe('currencyConversionPlugin', () => {
       expect(calls[0]?.convertedAmount).to.equal(20);
       expect(calls[0]?.rate).to.equal(2);
       expect(calls[0]?.date).to.be.instanceOf(Date);
+      expect(calls[0]?.usedFallback).to.equal(false);
+    });
+
+    it('should set usedFallback: true in onSuccess when fallbackRate is used', async () => {
+      const calls: CurrencyPluginSuccessContext[] = [];
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => { throw new Error('down'); },
+        fallbackRate: 3,
+        onSuccess: (ctx) => calls.push(ctx),
+      });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(calls).to.have.length(1);
+      expect(calls[0]?.usedFallback).to.equal(true);
+      expect(calls[0]?.rate).to.equal(3);
     });
 
     it('should not fail save when cache.get() throws', async () => {

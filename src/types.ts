@@ -29,6 +29,8 @@ export interface CurrencyPluginSuccessContext {
   convertedAmount: number;
   rate: number;
   date: Date;
+  /** `true` when `fallbackRate` was used instead of the rate returned by `getRate` */
+  usedFallback: boolean;
 }
 
 export interface CurrencyPluginErrorContext {

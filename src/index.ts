@@ -179,7 +179,9 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
       workItems.push({ field, amount, fromCurrency, conversionDate, cacheKey });
     }
 
-    type RateResult = { success: true; rate: number } | { success: false; error: unknown };
+    type RateResult =
+      | { success: true; rate: number; usedFallback: boolean }
+      | { success: false; error: unknown };
 
     async function fetchRate({
       field,
@@ -189,6 +191,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     }: WorkItem): Promise<RateResult> {
       try {
         let rate: number | undefined;
+        let usedFallback = false;
         if (cache) {
           try {
             rate = await cache.get(cacheKey);
@@ -211,6 +214,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         if (rate == null || Number.isNaN(rate)) {
           if (typeof fallbackRate === "number") {
             rate = fallbackRate;
+            usedFallback = true;
           } else {
             throw new Error("Invalid rate");
           }
@@ -225,7 +229,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
           }
         }
 
-        return { success: true, rate };
+        return { success: true, rate, usedFallback };
       } catch (error) {
         if (typeof fallbackRate === "number") {
           if (rateValidation) {
@@ -239,7 +243,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
               };
             }
           }
-          return { success: true, rate: fallbackRate };
+          return { success: true, rate: fallbackRate, usedFallback: true };
         }
         return { success: false, error };
       }
@@ -300,6 +304,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
           convertedAmount: convertedValue.amount,
           rate: rateResult.rate,
           date: conversionDate,
+          usedFallback: rateResult.usedFallback,
         });
       }
     }
