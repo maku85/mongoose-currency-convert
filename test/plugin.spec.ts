@@ -542,6 +542,65 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.priceConverted?.currency).to.equal('EUR');
     });
 
+    it('should call onError before rollback and document should have reverted fields', async () => {
+      const schema = new Schema({
+        price: Number,
+        currency: String,
+        result: { ...RESULT_FIELD },
+        result2: { ...RESULT_FIELD },
+      });
+      let errorCtxField: string | undefined;
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+          { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result2', toCurrency: 'GBP' },
+        ],
+        getRate: async (_f, to) => {
+          if (to === 'GBP') throw new Error('fail GBP');
+          return 2;
+        },
+        rollbackOnError: true,
+        onError: (ctx) => { errorCtxField = ctx.field; },
+      });
+      const Doc = model(uniqueName(), schema);
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      // onError called with the failing field
+      expect(errorCtxField).to.equal('price');
+      // rollback: previously converted result also reverted
+      expect(saved?.result).to.be.undefined;
+      expect(saved?.result2).to.be.undefined;
+    });
+
+    it('should not let two schemas with the plugin interfere with each other', async () => {
+      const schemaA = new Schema({ price: Number, currency: String, result: { ...RESULT_FIELD } });
+      schemaA.plugin(currencyConversionPlugin, {
+        fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' }],
+        getRate: async () => 3,
+      });
+
+      const schemaB = new Schema({ price: Number, currency: String, result: { ...RESULT_FIELD } });
+      schemaB.plugin(currencyConversionPlugin, {
+        fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'GBP' }],
+        getRate: async () => 5,
+      });
+
+      const ModelA = model(uniqueName(), schemaA);
+      const ModelB = model(uniqueName(), schemaB);
+
+      const docA = await new ModelA({ price: 10, currency: 'USD' }).save();
+      const docB = await new ModelB({ price: 10, currency: 'USD' }).save();
+      const savedA = await ModelA.findById(docA._id).lean() as AnyDoc;
+      const savedB = await ModelB.findById(docB._id).lean() as AnyDoc;
+
+      // each model uses its own rate and toCurrency
+      expect(savedA?.result.amount).to.equal(30);
+      expect(savedA?.result.currency).to.equal('EUR');
+      expect(savedB?.result.amount).to.equal(50);
+      expect(savedB?.result.currency).to.equal('GBP');
+    });
+
     it('should handle multiple fields in parallel', async () => {
       const schema = new Schema({
         price: Number,
