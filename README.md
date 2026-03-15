@@ -9,15 +9,18 @@ A lightweight Mongoose plugin for automatic currency conversion at save and upda
 ## Features
 
 - **Automatic currency conversion** on `save`, `updateOne`, `updateMany`, and `findOneAndUpdate`
-- **Parallel rate fetching** — multiple fields are converted concurrently
+- **Parallel rate fetching** with optional concurrency limit
 - **Same-currency short-circuit** — no external call when source and target currency are equal
 - **Customizable exchange rate logic** via a user-provided `getRate` function
 - **Support for nested paths** in documents
 - **Pluggable rounding function** (default: round to 2 decimal places)
 - **Optional in-memory cache** with active TTL eviction, or bring your own (Redis, Memcached, …)
 - **Fallback rate** when `getRate` fails or returns an invalid value
-- **Error handling and rollback** on conversion failure
-- **Full ISO 4217 currency code validation** (170+ codes)
+- **Error handling and rollback** on conversion failure (`onError`, `rollbackOnError`)
+- **Success callback** for audit logging and monitoring (`onSuccess`)
+- **Rate bounds validation** to reject out-of-range rates from the provider
+- **Per-operation skip** via `$locals` or query option
+- **Full ISO 4217 currency code validation** (170+ codes), with public `isValidCurrencyCode` utility
 - **ESM and CommonJS** compatible, fully typed
 
 ## Installation
@@ -114,9 +117,12 @@ The target path must point to a schema object with `amount`, `currency`, and `da
 | `cache` | `CurrencyRateCache<number>` | — | Cache for exchange rates |
 | `allowedCurrencyCodes` | `string[]` | Full ISO 4217 list | Restrict accepted currency codes |
 | `fallbackRate` | `number` | — | Rate to use when `getRate` throws or returns an invalid value |
-| `onError` | `(ctx: CurrencyPluginErrorContext) => void` | `console.error` | Called on conversion failure |
+| `onError` | `(ctx: CurrencyPluginErrorContext) => void` | `console.error` | Called on rate fetch failure |
+| `onSuccess` | `(ctx: CurrencyPluginSuccessContext) => void` | — | Called after each successful conversion |
 | `rollbackOnError` | `boolean` | `false` | If `true`, clears already-converted fields when a field fails |
 | `dateTransform` | `(date: Date) => Date` | — | Transform the conversion date before passing it to `getRate` |
+| `concurrency` | `number` | `Infinity` | Max parallel `getRate` calls per document |
+| `rateValidation` | `{ min?: number; max?: number }` | — | Reject rates outside this range (throws, triggers `onError`/fallback) |
 
 ## Caching
 
@@ -201,7 +207,7 @@ The `CurrencyPluginErrorContext` object contains:
 
 ## Multiple fields
 
-Multiple fields are fetched **in parallel** and written sequentially:
+Multiple fields are fetched **in parallel** and written sequentially. Use `concurrency` to cap simultaneous `getRate` calls (useful with rate-limited providers):
 
 ```ts
 ProductSchema.plugin(currencyConversionPlugin, {
@@ -210,7 +216,85 @@ ProductSchema.plugin(currencyConversionPlugin, {
     { sourcePath: 'price.amount', currencyPath: 'price.currency', targetPath: 'priceGbp', toCurrency: 'GBP' },
   ],
   getRate: myGetRate,
+  concurrency: 3, // at most 3 getRate calls at a time
 });
+```
+
+## Success callback
+
+Use `onSuccess` for audit logging, monitoring, or debugging in production:
+
+```ts
+ProductSchema.plugin(currencyConversionPlugin, {
+  fields: [/* … */],
+  getRate: myGetRate,
+  onSuccess: (ctx) => {
+    console.log(
+      `Converted ${ctx.originalAmount} ${ctx.fromCurrency} → ${ctx.convertedAmount} ${ctx.toCurrency} at rate ${ctx.rate}`,
+    );
+  },
+});
+```
+
+The `CurrencyPluginSuccessContext` object contains:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `field` | `string` | `sourcePath` of the converted field |
+| `fromCurrency` | `string` | Source currency code |
+| `toCurrency` | `string` | Target currency code |
+| `originalAmount` | `number` | Amount before conversion |
+| `convertedAmount` | `number` | Amount after conversion |
+| `rate` | `number` | Exchange rate used |
+| `date` | `Date` | Conversion date used |
+
+## Rate bounds validation
+
+Protect against buggy providers that return nonsensical rates:
+
+```ts
+ProductSchema.plugin(currencyConversionPlugin, {
+  fields: [/* … */],
+  getRate: myGetRate,
+  rateValidation: { min: 0.0001, max: 10000 },
+  onError: (ctx) => console.error('Rate out of bounds:', ctx.error),
+});
+```
+
+Rates outside the range are treated as errors and follow the same `onError` / `fallbackRate` / `rollbackOnError` flow.
+
+## Skipping conversion
+
+To skip conversion for a single operation (e.g. during data migration or seeding):
+
+```ts
+// On save — use $locals
+const doc = new Product({ price: { amount: 100, currency: 'USD' } });
+doc.$locals.skipCurrencyConversion = true;
+await doc.save();
+
+// On update queries — pass as a query option
+await Product.updateOne(
+  { _id: id },
+  { $set: { 'price.amount': 200 } },
+  { skipCurrencyConversion: true },
+);
+```
+
+## Currency code validation
+
+`isValidCurrencyCode` is exported as a standalone utility, useful for validating user input in forms or API handlers:
+
+```ts
+import { isValidCurrencyCode } from 'mongoose-currency-convert/validate';
+
+isValidCurrencyCode('EUR'); // true
+isValidCurrencyCode('XYZ'); // false
+isValidCurrencyCode('usd'); // true — normalised to uppercase internally
+
+// Restrict to a custom list
+isValidCurrencyCode('EUR', ['USD', 'EUR', 'GBP']); // true
+isValidCurrencyCode('JPY', ['USD', 'EUR', 'GBP']); // false
 ```
 
 ## TypeScript
@@ -222,6 +306,7 @@ import type {
   CurrencyPluginOptions,
   CurrencyFieldConfig,
   CurrencyPluginErrorContext,
+  CurrencyPluginSuccessContext,
   CurrencyRateCache,
   GetRateFn,
 } from 'mongoose-currency-convert/types';
