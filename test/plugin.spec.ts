@@ -246,6 +246,19 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.result).to.be.undefined;
     });
 
+    it('should reject rate outside rateValidation bounds and call onError', async () => {
+      let capturedError: unknown;
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => 999,
+        rateValidation: { min: 0, max: 10 },
+        onError: (ctx) => { capturedError = ctx.error; },
+      });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(capturedError).to.be.instanceOf(Error);
+      expect((capturedError as Error).message).to.include('out of bounds');
+    });
+
     it('should call onSuccess after a successful conversion', async () => {
       const calls: CurrencyPluginSuccessContext[] = [];
       const Doc = addPlugin(buildSchema(), { onSuccess: (ctx) => calls.push(ctx) });

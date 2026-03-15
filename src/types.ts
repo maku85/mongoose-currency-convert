@@ -18,6 +18,7 @@ export interface CurrencyPluginOptions {
   rollbackOnError?: boolean;
   dateTransform?: (date: Date) => Date;
   concurrency?: number;
+  rateValidation?: { min?: number; max?: number };
 }
 
 export interface CurrencyPluginSuccessContext {

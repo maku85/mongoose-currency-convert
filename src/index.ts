@@ -38,6 +38,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     cache,
     dateTransform,
     concurrency = Infinity,
+    rateValidation,
   } = options;
 
   if (!fields || !Array.isArray(fields) || fields.length === 0) {
@@ -74,6 +75,27 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     (typeof options.concurrency !== "number" || options.concurrency < 1)
   ) {
     throw new Error('[mongoose-currency-convert] option "concurrency" must be a number >= 1');
+  }
+
+  if (rateValidation !== undefined) {
+    if (typeof rateValidation !== "object" || rateValidation === null) {
+      throw new Error('[mongoose-currency-convert] option "rateValidation" must be an object');
+    }
+    if (rateValidation.min !== undefined && typeof rateValidation.min !== "number") {
+      throw new Error('[mongoose-currency-convert] option "rateValidation.min" must be a number');
+    }
+    if (rateValidation.max !== undefined && typeof rateValidation.max !== "number") {
+      throw new Error('[mongoose-currency-convert] option "rateValidation.max" must be a number');
+    }
+    if (
+      rateValidation.min !== undefined &&
+      rateValidation.max !== undefined &&
+      rateValidation.min > rateValidation.max
+    ) {
+      throw new Error(
+        '[mongoose-currency-convert] option "rateValidation.min" must be <= "rateValidation.max"',
+      );
+    }
   }
 
   async function applyCurrencyConversion(
@@ -185,6 +207,15 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
             rate = fallbackRate;
           } else {
             throw new Error("Invalid rate");
+          }
+        }
+
+        if (rateValidation) {
+          const { min = 0, max } = rateValidation;
+          if (rate < min || (max !== undefined && rate > max)) {
+            throw new Error(
+              `Rate ${rate} is out of bounds [${min}, ${max ?? "∞"}] for ${fromCurrency}→${field.toCurrency}`,
+            );
           }
         }
 
