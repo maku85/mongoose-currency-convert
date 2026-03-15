@@ -222,6 +222,17 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         return { success: true, rate };
       } catch (error) {
         if (typeof fallbackRate === "number") {
+          if (rateValidation) {
+            const { min = 0, max } = rateValidation;
+            if (fallbackRate < min || (max !== undefined && fallbackRate > max)) {
+              return {
+                success: false,
+                error: new Error(
+                  `Fallback rate ${fallbackRate} is also out of bounds [${min}, ${max ?? "∞"}] for ${fromCurrency}→${field.toCurrency}`,
+                ),
+              };
+            }
+          }
           return { success: true, rate: fallbackRate };
         }
         return { success: false, error };

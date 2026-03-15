@@ -246,6 +246,32 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.result).to.be.undefined;
     });
 
+    it('should also reject fallbackRate when it is out of rateValidation bounds', async () => {
+      let capturedError: unknown;
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => { throw new Error('service down'); },
+        rateValidation: { min: 0, max: 10 },
+        fallbackRate: 999, // out of bounds
+        onError: (ctx) => { capturedError = ctx.error; },
+      });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(capturedError).to.be.instanceOf(Error);
+      expect((capturedError as Error).message).to.include('out of bounds');
+    });
+
+    it('should use fallbackRate when it is within rateValidation bounds', async () => {
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => { throw new Error('service down'); },
+        rateValidation: { min: 0, max: 10 },
+        fallbackRate: 5, // within bounds
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(50);
+    });
+
     it('should reject rate outside rateValidation bounds and call onError', async () => {
       let capturedError: unknown;
       const Doc = addPlugin(buildSchema(), {
