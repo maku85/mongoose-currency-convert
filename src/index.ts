@@ -57,6 +57,12 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
       const amount = getNestedValue(doc, sourcePath);
       if (amount == null) continue;
+      if (typeof amount !== "number" || Number.isNaN(amount)) {
+        console.warn(
+          `[mongoose-currency-convert] WARNING: non-numeric amount at path '${sourcePath}': ${JSON.stringify(amount)}`,
+        );
+        continue;
+      }
 
       const fromCurrency = getNestedValue(doc, currencyPath);
       if (typeof fromCurrency !== "string" || !fromCurrency) {

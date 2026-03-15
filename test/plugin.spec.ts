@@ -112,6 +112,18 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.result.date).to.be.instanceOf(Date);
     });
 
+    it('should skip conversion when amount is non-numeric', async () => {
+      const schema = new Schema({ price: Schema.Types.Mixed, currency: String, result: { ...RESULT_FIELD } });
+      addPlugin(schema);
+      const Doc = model(uniqueName(), schema);
+
+      for (const badValue of [{}, [], 'abc']) {
+        const doc = await new Doc({ price: badValue, currency: 'USD' }).save();
+        const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+        expect(saved?.result).to.be.undefined;
+      }
+    });
+
     it('should skip conversion if price is missing', async () => {
       const Doc = addPlugin(buildSchema());
       const doc = await new Doc({ currency: 'USD' }).save();
@@ -255,10 +267,10 @@ describe('currencyConversionPlugin', () => {
       await new Doc({ price: 10, currency: 'USD' }).save();
 
       expect(ctx).to.exist;
-      expect(ctx!.field).to.equal('price');
-      expect(ctx!.fromCurrency).to.equal('USD');
-      expect(ctx!.toCurrency).to.equal('EUR');
-      expect(ctx!.error).to.be.instanceOf(Error);
+      expect(ctx?.field).to.equal('price');
+      expect(ctx?.fromCurrency).to.equal('USD');
+      expect(ctx?.toCurrency).to.equal('EUR');
+      expect(ctx?.error).to.be.instanceOf(Error);
     });
 
     it('should log to console.error when getRate throws and onError is not set', async () => {
