@@ -16,6 +16,7 @@ export interface CurrencyPluginOptions {
   fallbackRate?: number;
   rollbackOnError?: boolean;
   dateTransform?: (date: Date) => Date;
+  concurrency?: number;
 }
 
 export interface CurrencyPluginErrorContext {

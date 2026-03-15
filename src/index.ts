@@ -14,6 +14,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     rollbackOnError,
     cache,
     dateTransform,
+    concurrency = Infinity,
   } = options;
 
   if (!fields || !Array.isArray(fields) || fields.length === 0) {
@@ -106,42 +107,51 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     }
 
     type RateResult = { success: true; rate: number } | { success: false; error: unknown };
-    const rateResults = await Promise.all(
-      workItems.map(
-        async ({ field, fromCurrency, conversionDate, cacheKey }): Promise<RateResult> => {
-          try {
-            let rate: number | undefined;
-            if (cache) rate = await cache.get(cacheKey);
 
-            if (rate === undefined) {
-              rate = await getRate(fromCurrency, field.toCurrency, conversionDate);
-              if (cache && rate !== undefined && !Number.isNaN(rate)) {
-                try {
-                  await cache.set(cacheKey, rate);
-                } catch (cacheErr) {
-                  console.warn("[mongoose-currency-convert] cache.set() failed:", cacheErr);
-                }
-              }
-            }
+    async function fetchRate({
+      field,
+      fromCurrency,
+      conversionDate,
+      cacheKey,
+    }: WorkItem): Promise<RateResult> {
+      try {
+        let rate: number | undefined;
+        if (cache) rate = await cache.get(cacheKey);
 
-            if (rate == null || Number.isNaN(rate)) {
-              if (typeof fallbackRate === "number") {
-                rate = fallbackRate;
-              } else {
-                throw new Error("Invalid rate");
-              }
+        if (rate === undefined) {
+          rate = await getRate(fromCurrency, field.toCurrency, conversionDate);
+          if (cache && rate !== undefined && !Number.isNaN(rate)) {
+            try {
+              await cache.set(cacheKey, rate);
+            } catch (cacheErr) {
+              console.warn("[mongoose-currency-convert] cache.set() failed:", cacheErr);
             }
-
-            return { success: true, rate };
-          } catch (error) {
-            if (typeof fallbackRate === "number") {
-              return { success: true, rate: fallbackRate };
-            }
-            return { success: false, error };
           }
-        },
-      ),
-    );
+        }
+
+        if (rate == null || Number.isNaN(rate)) {
+          if (typeof fallbackRate === "number") {
+            rate = fallbackRate;
+          } else {
+            throw new Error("Invalid rate");
+          }
+        }
+
+        return { success: true, rate };
+      } catch (error) {
+        if (typeof fallbackRate === "number") {
+          return { success: true, rate: fallbackRate };
+        }
+        return { success: false, error };
+      }
+    }
+
+    const limit = Math.max(1, concurrency);
+    const rateResults: RateResult[] = [];
+    for (let i = 0; i < workItems.length; i += limit) {
+      const batch = workItems.slice(i, i + limit);
+      rateResults.push(...(await Promise.all(batch.map(fetchRate))));
+    }
 
     const convertedFields: string[] = [];
     for (let i = 0; i < workItems.length; i++) {
