@@ -236,6 +236,16 @@ describe('currencyConversionPlugin', () => {
       expect(capturedDate?.toISOString()).to.equal(fixedDate.toISOString());
     });
 
+    it('should skip conversion when $locals.skipCurrencyConversion is true', async () => {
+      const Doc = addPlugin(buildSchema());
+      const doc = new Doc({ price: 10, currency: 'USD' });
+      doc.$locals.skipCurrencyConversion = true;
+      await doc.save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result).to.be.undefined;
+    });
+
     it('should call onSuccess after a successful conversion', async () => {
       const calls: CurrencyPluginSuccessContext[] = [];
       const Doc = addPlugin(buildSchema(), { onSuccess: (ctx) => calls.push(ctx) });
@@ -414,6 +424,22 @@ describe('currencyConversionPlugin', () => {
       const updated = await Doc.findById(created._id).lean() as AnyDoc;
 
       expect(updated?.result.amount).to.equal(40);
+    });
+
+    it('should skip conversion on updateOne when skipCurrencyConversion option is true', async () => {
+      const Doc = addPlugin(buildSchema());
+      const created = await new Doc({ price: 5, currency: 'USD' }).save();
+      // first save: price 5 * rate 2 = result.amount 10
+
+      await Doc.updateOne(
+        { _id: created._id },
+        { $set: { price: 100, currency: 'USD' } },
+        { skipCurrencyConversion: true } as Record<string, unknown>,
+      );
+      const updated = await Doc.findById(created._id).lean() as AnyDoc;
+
+      // conversion skipped → result.amount still 10, not 200
+      expect(updated?.result.amount).to.equal(10);
     });
   });
 

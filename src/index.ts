@@ -260,6 +260,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
   }
 
   schema.pre("save", async function (this: Document) {
+    if (this.$locals.skipCurrencyConversion) return;
     const conversions = await applyCurrencyConversion(this as unknown as Record<string, unknown>);
     for (const [path, value] of conversions) {
       this.set(path, value);
@@ -270,6 +271,9 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     this: import("mongoose").Query<unknown, unknown>,
     next: (err?: Error) => void,
   ) {
+    const queryOptions = this.getOptions() as Record<string, unknown>;
+    if (queryOptions.skipCurrencyConversion) return next();
+
     const update = this.getUpdate();
     if (!update) return next();
 
