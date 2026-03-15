@@ -86,6 +86,13 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
           dateValue instanceof Date)
           ? new Date(dateValue)
           : new Date();
+      if (Number.isNaN(conversionDate.getTime())) {
+        console.warn(
+          `[mongoose-currency-convert] Invalid date value at path '${datePath}', using current date`,
+        );
+        conversionDate = new Date();
+      }
+
       if (dateTransform) conversionDate = dateTransform(conversionDate);
 
       const cacheKey = `${fromCurrency}_${toCurrency}_${conversionDate.toISOString().slice(0, 10)}`;

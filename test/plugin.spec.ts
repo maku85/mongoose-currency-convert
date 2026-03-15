@@ -183,6 +183,35 @@ describe('currencyConversionPlugin', () => {
       expect(capturedDate?.toISOString().slice(0, 10)).to.equal('2024-06-01');
     });
 
+    it('should use current date when datePath points to an invalid date string', async () => {
+      const schema = new Schema({
+        price: Number,
+        currency: String,
+        txDate: String,
+        result: { ...RESULT_FIELD },
+      });
+      let capturedDate: Date | undefined;
+      schema.plugin(currencyConversionPlugin, {
+        fields: [
+          {
+            sourcePath: 'price',
+            currencyPath: 'currency',
+            datePath: 'txDate',
+            targetPath: 'result',
+            toCurrency: 'EUR',
+          },
+        ],
+        getRate: async (_f, _t, date) => { capturedDate = date; return 2; },
+      });
+      const Doc = model(uniqueName(), schema);
+      const before = new Date();
+      await new Doc({ price: 10, currency: 'USD', txDate: 'not-a-date' }).save();
+      const after = new Date();
+
+      expect(capturedDate).to.be.instanceOf(Date);
+      expect(capturedDate?.getTime()).to.be.within(before.getTime() - 1000, after.getTime() + 1000);
+    });
+
     it('should apply dateTransform to the conversion date', async () => {
       const fixedDate = new Date(Date.UTC(2000, 0, 1));
       let capturedDate: Date | undefined;
