@@ -61,6 +61,18 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     throw new Error('[mongoose-currency-convert] option "onSuccess" must be a function');
   }
 
+  if (options.dateTransform !== undefined && typeof options.dateTransform !== "function") {
+    throw new Error('[mongoose-currency-convert] option "dateTransform" must be a function');
+  }
+
+  for (const field of fields) {
+    if (!isValidCurrencyCode(field.toCurrency, allowedCurrencyCodes)) {
+      throw new Error(
+        `[mongoose-currency-convert] invalid toCurrency "${field.toCurrency}" in field config`,
+      );
+    }
+  }
+
   if (
     options.fallbackRate !== undefined &&
     (typeof options.fallbackRate !== "number" || options.fallbackRate < 0)
@@ -151,11 +163,6 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         continue;
       }
 
-      if (!isValidCurrencyCode(toCurrency, allowedCurrencyCodes)) {
-        console.warn(`[mongoose-currency-convert] Invalid target currency code: ${toCurrency}`);
-        continue;
-      }
-
       if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) continue;
 
       const dateValue = datePath ? getNestedValue(doc, datePath) : undefined;
@@ -173,7 +180,16 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         conversionDate = new Date();
       }
 
-      if (dateTransform) conversionDate = dateTransform(conversionDate);
+      if (dateTransform) {
+        try {
+          conversionDate = dateTransform(conversionDate);
+        } catch (transformErr) {
+          console.warn(
+            `[mongoose-currency-convert] dateTransform threw for field '${sourcePath}', using original date:`,
+            transformErr,
+          );
+        }
+      }
 
       const cacheKey = `${fromCurrency.toUpperCase()}_${toCurrency.toUpperCase()}_${conversionDate.toISOString().slice(0, 10)}`;
       workItems.push({ field, amount, fromCurrency, conversionDate, cacheKey });

@@ -6,6 +6,9 @@ export class SimpleCache<T = unknown> {
   private sweepTimer: ReturnType<typeof setInterval>;
 
   constructor(ttlMinutes: number = 60) {
+    if (ttlMinutes <= 0) {
+      throw new Error("[mongoose-currency-convert] SimpleCache: ttlMinutes must be > 0");
+    }
     this.ttl = ttlMinutes * 60 * 1000;
     this.sweepTimer = setInterval(() => this.sweep(), this.ttl);
     this.sweepTimer.unref();
