@@ -17,6 +17,7 @@ export interface CurrencyPluginOptions {
   fallbackRate?: number;
   rollbackOnError?: boolean;
   dateTransform?: (date: Date) => Date;
+  /** Maximum number of concurrent `getRate` calls. Defaults to `5`. */
   concurrency?: number;
   rateValidation?: { min?: number; max?: number };
 }

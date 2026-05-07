@@ -37,7 +37,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     rollbackOnError,
     cache,
     dateTransform,
-    concurrency = Infinity,
+    concurrency = 5,
     rateValidation,
   } = options;
 

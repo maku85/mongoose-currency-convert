@@ -121,7 +121,7 @@ The target path must point to a schema object with `amount`, `currency`, and `da
 | `onSuccess` | `(ctx: CurrencyPluginSuccessContext) => void` | — | Called after each successful conversion |
 | `rollbackOnError` | `boolean` | `false` | If `true`, clears already-converted fields when a field fails |
 | `dateTransform` | `(date: Date) => Date` | — | Transform the conversion date before passing it to `getRate` |
-| `concurrency` | `number` | `Infinity` | Max parallel `getRate` calls per document |
+| `concurrency` | `number` | `5` | Max parallel `getRate` calls per document |
 | `rateValidation` | `{ min?: number; max?: number }` | — | Reject rates outside this range (throws, triggers `onError`/fallback) |
 
 ## Caching
