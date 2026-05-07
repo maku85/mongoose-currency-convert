@@ -627,12 +627,47 @@ describe('currencyConversionPlugin', () => {
       console.warn = origWarn;
 
       const saved = await Doc.findById(doc._id).lean() as AnyDoc;
-      // conversion still completes using original date
       expect(saved?.result.amount).to.equal(20);
-      // captured date is the original (non-transformed) date
       expect(capturedDate?.getTime()).to.be.within(before.getTime() - 1000, after.getTime() + 1000);
-      // warning was logged
       expect(warnings.some((w) => w.includes('dateTransform threw'))).to.be.true;
+    });
+
+    it('should use original date when dateTransform returns an invalid Date', async () => {
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+
+      let capturedDate: Date | undefined;
+      const before = new Date();
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async (_f: string, _t: string, date?: Date) => { capturedDate = date; return 2; },
+        dateTransform: () => new Date('invalid'),
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const after = new Date();
+      console.warn = origWarn;
+
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+      expect(saved?.result.amount).to.equal(20);
+      expect(capturedDate?.getTime()).to.be.within(before.getTime() - 1000, after.getTime() + 1000);
+      expect(warnings.some((w) => w.includes('invalid Date'))).to.be.true;
+    });
+
+    it('should fall back to unrounded amount when round() returns a non-finite value', async () => {
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => 2,
+        round: () => NaN,
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      console.warn = origWarn;
+
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+      expect(saved?.result.amount).to.equal(20); // 10 * 2, unrounded
+      expect(warnings.some((w) => w.includes('round()'))).to.be.true;
     });
 
     it('should not break save when onSuccess callback throws', async () => {

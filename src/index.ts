@@ -189,7 +189,14 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
 
       if (dateTransform) {
         try {
-          conversionDate = dateTransform(conversionDate);
+          const transformed = dateTransform(conversionDate);
+          if (transformed instanceof Date && !Number.isNaN(transformed.getTime())) {
+            conversionDate = transformed;
+          } else {
+            console.warn(
+              `[mongoose-currency-convert] dateTransform returned an invalid Date for field '${sourcePath}', using original date`,
+            );
+          }
         } catch (transformErr) {
           console.warn(
             `[mongoose-currency-convert] dateTransform threw for field '${sourcePath}', using original date:`,
@@ -314,8 +321,15 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
         continue;
       }
 
+      const rawAmount = Number(amount) * rateResult.rate;
+      const roundedAmount = round(rawAmount);
+      if (!Number.isFinite(roundedAmount)) {
+        console.warn(
+          `[mongoose-currency-convert] WARNING: round() returned a non-finite value for field '${sourcePath}', using unrounded amount`,
+        );
+      }
       const convertedValue = {
-        amount: round(Number(amount) * rateResult.rate),
+        amount: Number.isFinite(roundedAmount) ? roundedAmount : rawAmount,
         currency: toCurrency,
         date: conversionDate,
       };
