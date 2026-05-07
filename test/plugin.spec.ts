@@ -335,6 +335,17 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.result.amount).to.equal(50);
     });
 
+    it('should accept a rate of 0 when rateValidation has no explicit min', async () => {
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => 0,
+        rateValidation: { max: 10 }, // no min — should default to 0, not Number.EPSILON
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(0);
+    });
+
     it('should reject rate outside rateValidation bounds and call onError', async () => {
       let capturedError: unknown;
       const Doc = addPlugin(buildSchema(), {
