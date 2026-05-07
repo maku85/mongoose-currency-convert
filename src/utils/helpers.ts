@@ -40,7 +40,6 @@ const ISO_4217_CODES = [
   "COP",
   "COU",
   "CRC",
-  "CUC",
   "CUP",
   "CVE",
   "CZK",
@@ -69,7 +68,6 @@ const ISO_4217_CODES = [
   // H
   "HKD",
   "HNL",
-  "HRK",
   "HTG",
   "HUF",
   // I
