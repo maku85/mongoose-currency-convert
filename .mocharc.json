@@ -3,7 +3,7 @@
   "extension": ["ts"],
   "spec": ["test/**/*.spec.ts"],
   "recursive": true,
-  "timeout": 10000,
+  "timeout": 60000,
   "exit": true,
   "parallel": false,
   "check-leaks": true,

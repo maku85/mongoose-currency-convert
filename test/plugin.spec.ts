@@ -425,6 +425,39 @@ describe('currencyConversionPlugin', () => {
       expect(saved?.result.amount).to.equal(50);
     });
 
+    it('should use fallbackRate when getRate returns Infinity', async () => {
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => Infinity,
+        fallbackRate: 5,
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(50);
+    });
+
+    it('should use fallbackRate when getRate returns -Infinity', async () => {
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => -Infinity,
+        fallbackRate: 5,
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(50);
+    });
+
+    it('should call onError when getRate returns Infinity and no fallbackRate is set', async () => {
+      let capturedError: unknown;
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => Infinity,
+        onError: (ctx) => { capturedError = ctx.error; },
+      });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(capturedError).to.be.instanceOf(Error);
+    });
+
     it('should call onError when getRate throws', async () => {
       let ctx: CurrencyPluginErrorContext | undefined;
       const Doc = addPlugin(buildSchema(), {
