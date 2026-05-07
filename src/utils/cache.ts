@@ -3,7 +3,7 @@ import type { CacheEntry } from "../types.js";
 export class SimpleCache<T = unknown> {
   private store = new Map<string, CacheEntry<T>>();
   private ttl: number;
-  private sweepTimer: ReturnType<typeof setInterval>;
+  private sweepTimer: NodeJS.Timeout;
 
   constructor(ttlMinutes: number = 60) {
     if (ttlMinutes <= 0) {

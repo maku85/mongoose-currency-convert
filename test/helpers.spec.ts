@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 
 import {
   getNestedValue,
@@ -60,6 +60,10 @@ describe('helpers', () => {
 
       expect(getNestedValue(obj, ['a', 'b', 'c'])).to.equal(42);
     });
+
+    it('should access array element by numeric string key', () => {
+      expect(getNestedValue({ a: [10, 20, 30] }, 'a.1')).to.equal(20);
+    });
   });
 
   describe('#setNestedValue', () => {
@@ -101,6 +105,22 @@ describe('helpers', () => {
       setNestedValue(obj, 'a.b.c', 2);
 
       expect(obj).to.deep.equal({ a: { b: { c: 2 } } });
+    });
+
+    it('should set a value at a numeric last segment in an array target', () => {
+      const arr: unknown[] = [1, 2, 3];
+
+      setNestedValue(arr as unknown as Record<string, unknown>, '1', 99);
+
+      expect(arr[1]).to.equal(99);
+    });
+
+    it('should traverse a numeric intermediate segment in an array', () => {
+      const arr = [{}] as unknown[];
+
+      setNestedValue(arr as unknown as Record<string, unknown>, '0.x', 42);
+
+      expect((arr[0] as Record<string, unknown>).x).to.equal(42);
     });
   });
 

@@ -1,7 +1,7 @@
 # mongoose-currency-convert
 
 [![npm version](https://img.shields.io/npm/v/mongoose-currency-convert.svg)](https://www.npmjs.com/package/mongoose-currency-convert)
-[![Release](https://github.com/maku85/mongoose-currency-convert/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/maku85/mongoose-currency-convert/actions/workflows/release.yml)
+[![CI](https://github.com/maku85/mongoose-currency-convert/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/maku85/mongoose-currency-convert/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A lightweight Mongoose plugin for automatic currency conversion at save and update time — flexible, extensible, and service-agnostic.
@@ -116,19 +116,19 @@ The target path must point to a schema object with `amount`, `currency`, and `da
 | `round` | `(value: number) => number` | Round to 2 decimals | Custom rounding function |
 | `cache` | `CurrencyRateCache<number>` | — | Cache for exchange rates |
 | `allowedCurrencyCodes` | `string[]` | Full ISO 4217 list | Restrict accepted currency codes |
-| `fallbackRate` | `number` | — | Rate to use when `getRate` throws or returns an invalid value |
+| `fallbackRate` | `number` (≥ 0) | — | Rate to use when `getRate` throws or returns an invalid value |
 | `onError` | `(ctx: CurrencyPluginErrorContext) => void` | `console.error` | Called on rate fetch failure |
 | `onSuccess` | `(ctx: CurrencyPluginSuccessContext) => void` | — | Called after each successful conversion |
 | `rollbackOnError` | `boolean` | `false` | If `true`, clears already-converted fields when a field fails |
 | `dateTransform` | `(date: Date) => Date` | — | Transform the conversion date before passing it to `getRate` |
 | `concurrency` | `number` | `5` | Max parallel `getRate` calls per document |
-| `rateValidation` | `{ min?: number; max?: number }` | — | Reject rates outside this range (throws, triggers `onError`/fallback) |
+| `rateValidation` | `{ min?: number; max?: number }` | — | Reject rates outside this range (throws, triggers `onError`/fallback). `min` defaults to `0` when not specified |
 
 ## Caching
 
 ### Built-in `SimpleCache`
 
-An in-memory LRU cache with TTL-based eviction is included. The cache key is `{from}_{to}_{YYYY-MM-DD}`.
+An in-memory TTL cache with active eviction is included. The cache key is `{from}_{to}_{YYYY-MM-DD}`.
 
 ```ts
 import { SimpleCache } from 'mongoose-currency-convert/cache';
@@ -354,32 +354,27 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Releasing
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [`commit-and-tag-version`](https://github.com/absolute-version/commit-and-tag-version) for versioning.
+Releases are cut manually using the `scripts/release.sh` script, which runs typecheck, tests, and build before bumping the version, pushing the tag, and publishing to npm.
 
 ```bash
-# preview what would change without modifying anything
-pnpm release:dry
-
-# release (auto-detects patch/minor/major from commits)
+# patch release  (0.2.4 → 0.2.5)
 pnpm release
 
-# or force a specific bump
+# minor release  (0.2.4 → 0.3.0)
 pnpm release:minor
-pnpm release:major
 
-# push commit + tag → triggers the GitHub Action
-git push --follow-tags
+# major release  (0.2.4 → 1.0.0)
+pnpm release:major
 ```
 
-The version bump is determined by commit types:
+Each command runs the following steps in order:
 
-| Commit type | Release |
-|-------------|---------|
-| `fix:`, `perf:`, `revert:` | patch |
-| `feat:` | minor |
-| `feat!:` / `BREAKING CHANGE` | major |
-
-The GitHub Action will automatically create a GitHub Release and publish to npm.
+1. `pnpm typecheck`
+2. `pnpm test`
+3. `pnpm build`
+4. `npm version <type>` — bumps `package.json` and creates a git tag
+5. `git push --follow-tags`
+6. `npm publish --access public`
 
 ## Changelog
 

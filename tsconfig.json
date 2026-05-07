@@ -17,12 +17,7 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": [
-        "*"
-      ]
-    }
+    "types": ["node"]
   },
   "include": [
     "src/**/*.ts"

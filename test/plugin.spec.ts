@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { Schema, model } from 'mongoose';
 
 import type { CurrencyPluginErrorContext, CurrencyPluginOptions, CurrencyPluginSuccessContext, CurrencyRateCache } from '../src/types';
@@ -55,8 +55,8 @@ class MockCache implements CurrencyRateCache<number> {
 // ── Suite ──────────────────────────────────────────────────────────────────
 
 describe('currencyConversionPlugin', () => {
-  before(connectTestDB);
-  after(disconnectTestDB);
+  beforeAll(connectTestDB);
+  afterAll(disconnectTestDB);
   afterEach(clearDatabase);
 
   // ── Initialization ───────────────────────────────────────────────────────
@@ -121,6 +121,39 @@ describe('currencyConversionPlugin', () => {
       ).to.throw('"rateValidation.min" must be a number');
     });
 
+    it('should throw if round is not a function', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          round: 'not-a-function' as never,
+        }),
+      ).to.throw('"round" must be a function');
+    });
+
+    it('should throw if onError is not a function', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          onError: 'not-a-function' as never,
+        }),
+      ).to.throw('"onError" must be a function');
+    });
+
+    it('should throw if onSuccess is not a function', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          onSuccess: 'not-a-function' as never,
+        }),
+      ).to.throw('"onSuccess" must be a function');
+    });
+
     it('should throw if dateTransform is not a function', () => {
       const schema = {} as Schema;
       expect(() =>
@@ -140,6 +173,61 @@ describe('currencyConversionPlugin', () => {
           getRate: async () => 1,
         }),
       ).to.throw('invalid toCurrency "FAKE"');
+    });
+
+    it('should throw if fallbackRate is negative', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          fallbackRate: -1,
+        }),
+      ).to.throw('"fallbackRate" must be a non-negative number');
+    });
+
+    it('should throw if fallbackRate is not a number', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          fallbackRate: 'bad' as never,
+        }),
+      ).to.throw('"fallbackRate" must be a non-negative number');
+    });
+
+    it('should throw if concurrency is less than 1', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          concurrency: 0,
+        }),
+      ).to.throw('"concurrency" must be a number >= 1');
+    });
+
+    it('should throw if rateValidation is not an object', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          rateValidation: 'bad' as never,
+        }),
+      ).to.throw('"rateValidation" must be an object');
+    });
+
+    it('should throw if rateValidation.max is not a number', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [{ sourcePath: 'a', currencyPath: 'b', targetPath: 'c', toCurrency: 'EUR' }],
+          getRate: async () => 1,
+          rateValidation: { max: 'high' as never },
+        }),
+      ).to.throw('"rateValidation.max" must be a number');
     });
 
     it('should throw if two fields share the same targetPath', () => {
@@ -310,6 +398,44 @@ describe('currencyConversionPlugin', () => {
       await new Doc({ price: 10, currency: 'USD' }).save();
 
       expect(capturedDate?.toISOString()).to.equal(fixedDate.toISOString());
+    });
+
+    it('should skip conversion and warn when field has no targetPath', async () => {
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+
+      const schema = buildSchema();
+      schema.plugin(currencyConversionPlugin, {
+        fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: '' as never, toCurrency: 'EUR' }],
+        getRate: async () => 2,
+      });
+      const Doc = model(uniqueName(), schema);
+      await new Doc({ price: 10, currency: 'USD' }).save();
+      console.warn = origWarn;
+
+      const saved = await Doc.findOne({ price: 10 }).lean() as AnyDoc;
+      expect(saved?.result).to.be.undefined;
+      expect(warnings.some((w) => w.includes("'targetPath' is required"))).to.be.true;
+    });
+
+    it('should skip conversion and warn when targetPath does not exist in schema', async () => {
+      const warnings: string[] = [];
+      const origWarn = console.warn;
+      console.warn = (...args: unknown[]) => warnings.push(String(args[0]));
+
+      const schema = buildSchema();
+      schema.plugin(currencyConversionPlugin, {
+        fields: [{ sourcePath: 'price', currencyPath: 'currency', targetPath: 'nonExistentPath', toCurrency: 'EUR' }],
+        getRate: async () => 2,
+      });
+      const Doc = model(uniqueName(), schema);
+      await new Doc({ price: 10, currency: 'USD' }).save();
+      console.warn = origWarn;
+
+      const saved = await Doc.findOne({ price: 10 }).lean() as AnyDoc;
+      expect(saved?.result).to.be.undefined;
+      expect(warnings.some((w) => w.includes('does not exist in schema'))).to.be.true;
     });
 
     it('should skip conversion when $locals.skipCurrencyConversion is true', async () => {
