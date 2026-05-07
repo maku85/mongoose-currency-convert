@@ -65,12 +65,19 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
     throw new Error('[mongoose-currency-convert] option "dateTransform" must be a function');
   }
 
+  const targetPaths = new Set<string>();
   for (const field of fields) {
     if (!isValidCurrencyCode(field.toCurrency, allowedCurrencyCodes)) {
       throw new Error(
         `[mongoose-currency-convert] invalid toCurrency "${field.toCurrency}" in field config`,
       );
     }
+    if (targetPaths.has(field.targetPath)) {
+      throw new Error(
+        `[mongoose-currency-convert] duplicate targetPath "${field.targetPath}" in field config`,
+      );
+    }
+    targetPaths.add(field.targetPath);
   }
 
   if (

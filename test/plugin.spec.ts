@@ -141,6 +141,19 @@ describe('currencyConversionPlugin', () => {
         }),
       ).to.throw('invalid toCurrency "FAKE"');
     });
+
+    it('should throw if two fields share the same targetPath', () => {
+      const schema = {} as Schema;
+      expect(() =>
+        currencyConversionPlugin(schema, {
+          fields: [
+            { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'EUR' },
+            { sourcePath: 'price', currencyPath: 'currency', targetPath: 'result', toCurrency: 'GBP' },
+          ],
+          getRate: async () => 1,
+        }),
+      ).to.throw('duplicate targetPath "result"');
+    });
   });
 
   // ── SimpleCache ───────────────────────────────────────────────────────────
