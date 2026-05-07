@@ -227,7 +227,7 @@ export function currencyConversionPlugin(schema: Schema, options: CurrencyPlugin
           }
         }
 
-        if (rate == null || !Number.isFinite(rate)) {
+        if (rate == null || !Number.isFinite(rate) || rate < 0) {
           if (typeof fallbackRate === "number") {
             rate = fallbackRate;
             usedFallback = true;

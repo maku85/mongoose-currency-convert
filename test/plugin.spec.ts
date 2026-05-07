@@ -458,6 +458,28 @@ describe('currencyConversionPlugin', () => {
       expect(capturedError).to.be.instanceOf(Error);
     });
 
+    it('should use fallbackRate when getRate returns a negative rate', async () => {
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => -1.5,
+        fallbackRate: 5,
+      });
+      const doc = await new Doc({ price: 10, currency: 'USD' }).save();
+      const saved = await Doc.findById(doc._id).lean() as AnyDoc;
+
+      expect(saved?.result.amount).to.equal(50);
+    });
+
+    it('should call onError when getRate returns a negative rate and no fallbackRate is set', async () => {
+      let capturedError: unknown;
+      const Doc = addPlugin(buildSchema(), {
+        getRate: async () => -1,
+        onError: (ctx) => { capturedError = ctx.error; },
+      });
+      await new Doc({ price: 10, currency: 'USD' }).save();
+
+      expect(capturedError).to.be.instanceOf(Error);
+    });
+
     it('should call onError when getRate throws', async () => {
       let ctx: CurrencyPluginErrorContext | undefined;
       const Doc = addPlugin(buildSchema(), {
